@@ -17,7 +17,10 @@ interface ActiveBooking {
   bookingId: string;
   tokenId: string;
   farmerId: string;
+  centreId?: string;
   centreName: string;
+  centreDistrict?: string;
+  cropId?: string;
   cropName: string;
   bookingDate: string;
   timeWindow: string;
@@ -743,6 +746,8 @@ export default function App() {
       {/* Top Banner with Active User Identity & Role Switcher */}
       <div style={{ background: '#0f172a', color: '#ffffff', padding: '6px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />
+          <span style={{ fontWeight: 800, letterSpacing: '0.5px' }}>FARMSOL</span>
           <span style={{ background: userRole === 'admin' ? '#273b64' : '#15803d', color: '#ffffff', padding: '2px 8px', borderRadius: 4, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem' }}>
             {userRole} WORKSPACE
           </span>
@@ -802,8 +807,13 @@ export default function App() {
             {/* Mobile App Bar Header */}
             <div className="mobile-app-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img
+                  src="/farmsol_logo.jpg"
+                  alt="FARMSOL"
+                  style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #16a34a' }}
+                />
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#15803d', lineHeight: 1 }}>SmartProcure</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#15803d', lineHeight: 1 }}>FARMSOL</div>
                   <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 600 }}>Mobile Kisan App</div>
                 </div>
               </div>
@@ -1322,9 +1332,10 @@ export default function App() {
                                 const totalPayout = selectedQty * crObj.mspRatePerQuintal;
                                 const newTokenId = `PDC-${Math.floor(100000 + Math.random() * 900000)}`;
 
-                                const newBookingObj = {
+                                const newBookingObj: ActiveBooking = {
                                   bookingId: `PB-${Math.floor(100000 + Math.random() * 900000)}`,
                                   tokenId: newTokenId,
+                                  farmerId: farmer?.id || 'FR-AP-2026-000124',
                                   centreId: mObj.centreId,
                                   centreName: mObj.name,
                                   centreDistrict: mObj.district,
@@ -1337,6 +1348,7 @@ export default function App() {
                                   currentStage: 'GATE_ENTRY',
                                   currentServedToken: 'PDC-A004',
                                   farmersAhead: 2,
+                                  estimatedWaitMinutes: 15,
                                   estimatedPayout: totalPayout,
                                   mspRate: crObj.mspRatePerQuintal,
                                   qrPayload: `APMC|${newTokenId}|${mObj.centreId}|${farmer?.name || 'Farmer'}|${preferredDate}|${selectedSlotTime}|${crObj.name}|${selectedQty}QTL`

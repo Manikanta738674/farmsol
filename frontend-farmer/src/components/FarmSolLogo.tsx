@@ -5,14 +5,18 @@ interface FarmSolLogoProps {
   showTagline?: boolean;
   theme?: 'light' | 'dark';
   className?: string;
+  useOfficialImage?: boolean;
 }
 
 export const FarmSolLogo: React.FC<FarmSolLogoProps> = ({
   size = 'md',
   showTagline = true,
   theme = 'light',
-  className = ''
+  className = '',
+  useOfficialImage = true
 }) => {
+  const [imgError, setImgError] = React.useState(false);
+
   const dimensions = {
     sm: { width: 140, height: 140, emblemSize: 64 },
     md: { width: 220, height: 210, emblemSize: 110 },
@@ -25,6 +29,34 @@ export const FarmSolLogo: React.FC<FarmSolLogoProps> = ({
   const subtextColor = theme === 'dark' ? '#cbd5e1' : '#1e3a8a';
   const taglineColor = theme === 'dark' ? '#94a3b8' : '#334155';
 
+  if (useOfficialImage && !imgError) {
+    return (
+      <div
+        className={`farmsol-logo-container ${className}`}
+        style={{
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          userSelect: 'none'
+        }}
+      >
+        <img
+          src="/farmsol_logo.jpg"
+          alt="FARMSOL Logo"
+          onError={() => setImgError(true)}
+          style={{
+            width: dimensions.width,
+            maxHeight: dimensions.height,
+            objectFit: 'contain',
+            borderRadius: 12
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`farmsol-logo-container ${className}`}
@@ -32,7 +64,7 @@ export const FarmSolLogo: React.FC<FarmSolLogoProps> = ({
         display: 'inline-flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyConcent: 'center',
+        justifyContent: 'center',
         textAlign: 'center',
         userSelect: 'none'
       }}

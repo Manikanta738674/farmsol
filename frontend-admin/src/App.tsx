@@ -256,7 +256,17 @@ export default function App() {
     <div className="admin-layout">
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <div className="admin-brand-header">SMART PROCURE</div>
+        <div className="admin-brand-header" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src="/farmsol_logo.jpg"
+            alt="FARMSOL"
+            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #22c55e' }}
+          />
+          <div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 900, letterSpacing: '0.5px' }}>FARMSOL</div>
+            <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700 }}>CENTRAL GOVERNANCE</div>
+          </div>
+        </div>
 
         <div className="admin-menu-label">CENTRAL GOVERNANCE MENU</div>
 

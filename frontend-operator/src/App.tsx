@@ -385,9 +385,16 @@ export default function App() {
     <div className="operator-layout">
       {/* SIDEBAR */}
       <aside className="op-sidebar">
-        <div className="op-sidebar-brand">
-          <div className="op-brand-title">SMART PROCURE</div>
-          <div className="op-brand-subtitle">APMC PROCUREMENT DESK</div>
+        <div className="op-sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src="/farmsol_logo.jpg"
+            alt="FARMSOL"
+            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #16a34a' }}
+          />
+          <div>
+            <div className="op-brand-title">FARMSOL</div>
+            <div className="op-brand-subtitle">APMC PROCUREMENT DESK</div>
+          </div>
         </div>
 
         <nav className="op-sidebar-nav">

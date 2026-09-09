@@ -38,7 +38,7 @@ Runs the farmer mobile interface inside any desktop/mobile browser:
 cd frontend-farmer
 npm run web
 ```
-> **URL**: `http://localhost:8081` or `http://localhost:5173`
+> **URL**: `http://localhost:3001`
 
 ### 2.2 Expo Native Mobile Development (Physical Phone / Expo Go)
 Starts the Metro bundler and generates a scannable QR Code for Expo Go app:
