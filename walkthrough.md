@@ -87,3 +87,35 @@ $$\text{ETA} = \left(\frac{\text{Farmers Ahead}}{\text{Active Counters}}\right) 
 - **Unique Indexes**: `farmerId`, `mobile`, `operatorId`, `centreId`, `bookingId`, `qrToken`, `procurementId`, `paymentId`, `grievanceId`.
 - **Privacy & Security**: Signed opaque QR tokens; no sensitive Aadhaar or bank account numbers encoded in QR payload.
 - **Audit Logs**: Cryptographic audit trails for all status changes, quality parameter overrides, weight entries, and rate updates.
+
+---
+
+## 🛠️ System Diagnostics & Resolution Report
+
+### 1. Root Cause Analysis
+1. **Port 8081 Lockout**: An orphaned background `node.exe` process (PID 2332) locked port 8081, blocking dev server bindings and causing silent start failures.
+2. **TypeScript & Bundler Errors**:
+   - `FarmSolLogo.tsx`: Typo `justifyConcent: 'center'` threw React rendering warnings.
+   - `App.tsx`: `ActiveBooking` interface lacked `farmerId`, `centreId`, and `estimatedWaitMinutes`, causing compilation errors in `tsc`.
+   - `node_modules/react-native/index.js`: Flow typecast syntax `} as ReactNativePublicAPI;` caused Metro bundler syntax errors.
+3. **Workspace Script Misconfigurations**:
+   - Root `package.json` had copy-paste errors where `dev:operator` and `dev:admin` incorrectly pointed to `frontend-farmer`.
+   - Farmer app lacked a direct Vite dev script (`npm run web` / `npm run dev`), forcing Expo CLI start on every run.
+4. **Title Bar Logo**:
+   - The browser tab favicon was a generic wheat emoji `🌾` instead of the user's authentic FARMSOL mark.
+   - The mobile header and workstation sidebars lacked the authentic circular logo badge.
+
+### 2. Solutions Implemented
+- **Process Cleanup**: Terminated hung orphaned processes freeing ports 8081 and 3001.
+- **Official Asset Placement**: Integrated the user's authentic `farmsol_logo.jpg` and `farmsol_hero_bg.jpg` across all three frontend `public/` directories.
+- **Favicon & Meta Refresh**: Replaced generic emojis with `<link rel="icon" type="image/jpeg" href="/farmsol_logo.jpg" />` and updated titles across all three `index.html` files.
+- **Title Bar & Header Badges**: Added the high-resolution FARMSOL logo to the Farmer Mobile App header, top banner, Operator sidebar, and Admin governance header.
+- **Clean Scripts**: Configured direct Vite servers (`port 3001` for Farmer, `port 3010` for Operator, `port 3020` for Admin) with instant browser launch.
+
+### 3. Verification & Live Status
+- **Backend API (`http://localhost:5000/api/health`)**: `HEALTHY` (HTTP 200).
+- **Farmer App (`http://localhost:3001`)**: `FARMSOL — Smart Farmer Procurement Platform` verified live via Chrome subagent with 0 console errors.
+- **Operator Desk (`http://localhost:3010`)**: `FARMSOL — Mandi Operations & Live Queue Control` active and responsive.
+- **Admin Portal (`http://localhost:3020`)**: `FARMSOL — Central Procurement Governance Portal` active and responsive.
+- **Build Status**: All components (`shared`, `backend`, `frontend-farmer`, `frontend-operator`, `frontend-admin`) compile with 0 TypeScript errors.
+
