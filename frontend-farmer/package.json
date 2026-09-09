@@ -1,0 +1,36 @@
+{
+  "name": "@smartfarmer/frontend-farmer",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx expo start",
+    "dev": "npx expo start",
+    "web": "npx expo start --web",
+    "start:native": "npx expo start",
+    "tunnel": "npx expo start --tunnel",
+    "android": "npx expo start --android",
+    "ios": "npx expo start --ios",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "expo": "~57.0.20",
+    "@expo/metro-runtime": "~3.2.3",
+    "lucide-react": "^0.378.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-native": "0.87.1",
+    "react-native-web": "~0.19.10",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}

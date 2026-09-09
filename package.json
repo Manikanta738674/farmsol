@@ -1,0 +1,38 @@
+{
+  "name": "smart-farmer-procurement-platform",
+  "version": "1.0.0",
+  "description": "SIH26032 Smart Agricultural Procurement Platform - Ministry of Consumer Affairs, Food & Public Distribution",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend-farmer",
+    "frontend-operator",
+    "frontend-admin"
+  ],
+  "scripts": {
+    "start": "npm --prefix frontend-farmer run start",
+    "dev": "npm --prefix frontend-farmer run start",
+    "dev:expo": "npm --prefix frontend-farmer run start",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:farmer": "npm --prefix frontend-farmer run start",
+    "dev:operator": "npm --prefix frontend-farmer run start",
+    "dev:admin": "npm --prefix frontend-farmer run start",
+    "seed": "npm --prefix backend run seed",
+    "build": "npm --prefix shared run build && npm --prefix backend run build && npm --prefix frontend-farmer run build"
+  },
+  "keywords": [
+    "agriculture",
+    "procurement",
+    "smart-queue",
+    "sih26032",
+    "mandi",
+    "msp"
+  ],
+  "author": "SIH Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "~19.2.4",
+    "typescript": "~6.0.3"
+  }
+}
