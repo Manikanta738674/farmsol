@@ -1170,66 +1170,18 @@ export default function App() {
   // =============================================================
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Banner with Active User Identity & Role Switcher */}
+      {/* Top Banner — FARMSOL Brand + Language Switcher + Signed-in User */}
       <div style={{ background: '#0f172a', color: '#ffffff', padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
           <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>{t.workspaceTitle || 'FARMSOL DIGITAL PROCUREMENT PLATFORM'}</span>
-        </div>
-
-        {/* Dynamic Workspace / Role Switcher Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', padding: '3px 6px', borderRadius: 8, border: '1px solid #334155' }}>
-          <button
-            style={{
-              background: userRole === 'farmer' ? '#16a34a' : 'transparent',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '5px 14px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onClick={() => setUserRole('farmer')}
-          >
+          {/* Portal badge — read-only, no switching */}
+          <span style={{ background: '#166534', color: '#bbf7d0', padding: '2px 10px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 700 }}>
             🌾 {t.farmerPortalTab || 'Farmer Portal'}
-          </button>
-          <button
-            style={{
-              background: userRole === 'operator' ? '#0284c7' : 'transparent',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '5px 14px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onClick={() => setUserRole('operator')}
-          >
-            ⚡ {t.operatorDeskTab || 'Mandi Operator Desk'}
-          </button>
-          <button
-            style={{
-              background: userRole === 'admin' ? '#7c3aed' : 'transparent',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '5px 14px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onClick={() => setUserRole('admin')}
-          >
-            🛡️ {t.adminPortalTab || 'DoCA Command Centre'}
-          </button>
+          </span>
         </div>
 
-        {/* Top Header Multi-Lingual Switcher & Account Info */}
+        {/* Language Switcher + Signed-in User Info + Sign Out */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', background: '#1e293b', borderRadius: 6, padding: 2, border: '1px solid #334155' }}>
             <button
@@ -1253,7 +1205,7 @@ export default function App() {
           </div>
 
           <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
-            {t.loggedInAs || 'Logged in'}: <strong style={{ color: '#f8fafc' }}>{userRole === 'farmer' ? (farmer?.name || 'Farmer User') : userRole === 'operator' ? (t.mandiOperatorUser || 'APMC Mandi Operator') : (t.doxaOfficerUser || 'DoCA Senior Officer')}</strong>
+            {t.loggedInAs || 'Logged in'}: <strong style={{ color: '#f8fafc' }}>{farmer?.name || 'Farmer'}</strong>
           </span>
           <button
             style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
@@ -3290,29 +3242,29 @@ export default function App() {
                     <div className="help-contact-card"><h4 style={{ fontWeight: 800 }}>{t.faq || 'FAQ'}</h4><p style={{ fontWeight: 700 }}>{t.readGuidelines || 'Read Guidelines'}</p></div>
                   </div>
 
-                  {/* Web Portal Connections */}
-                  <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginTop: 20, textAlign: 'left' }}>
+                  {/* Portal Information — separate login required */}
+                  <div style={{ background: 'linear-gradient(135deg, #f8fafc, #f0f9ff)', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, marginTop: 20, textAlign: 'left' }}>
                     <h3 style={{ fontSize: '0.98rem', fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {t.crossPortalTitle || 'Cross-Portal Connections (Operator & Admin)'}
+                      🔐 {t.crossPortalTitle || 'Other Secure Portals'}
                     </h3>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14 }}>
-                      {t.crossPortalSub || 'Launch the desktop web portals for APMC Mandi Operators and DoCA Governance.'}
+                    <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 14, lineHeight: 1.5 }}>
+                      {t.crossPortalSub || 'The Operator and Admin portals are secure, role-restricted workspaces. Please sign out and log in with your designated operator or admin credentials to access them.'}
                     </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <button
-                        className="btn-login-green"
-                        style={{ padding: '10px 14px', fontSize: '0.82rem', width: '100%' }}
-                        onClick={() => setUserRole('operator')}
-                      >
-                        ⚡ Switch to Operator Web Desk
-                      </button>
-                      <button
-                        className="btn-login-admin"
-                        style={{ padding: '10px 14px', fontSize: '0.82rem', width: '100%' }}
-                        onClick={() => setUserRole('admin')}
-                      >
-                        🛡️ Switch to Admin Governance Portal
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ background: '#fff', border: '1px solid #dbeafe', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: '1.1rem' }}>⚡</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0284c7' }}>{t.operatorDeskTab || 'APMC Mandi Operator Desk'}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.operatorLoginHint || 'Sign out and login with Operator credentials'}</div>
+                        </div>
+                      </div>
+                      <div style={{ background: '#fff', border: '1px solid #ede9fe', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: '1.1rem' }}>🛡️</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#7c3aed' }}>{t.adminPortalTab || 'DoCA Admin Command Centre'}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.adminLoginHint || 'Sign out and login with Admin credentials'}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3323,11 +3275,11 @@ export default function App() {
       </div>
       )}
 
-      {/* 2. OPERATOR ROLE WORKSPACE */}
-      {userRole === 'operator' && <OperatorPortalView lang={lang} t={t} onRoleSwitch={setUserRole} />}
-
-      {/* 3. ADMIN ROLE WORKSPACE */}
-      {userRole === 'admin' && <AdminPortalView lang={lang} t={t} onRoleSwitch={setUserRole} />}
+      {/* NOTE: Operator and Admin portals require their own authenticated login via GatewayPage.
+          They are only accessible by selecting the correct role at the login screen and
+          completing authentication. Direct switching without credentials is NOT allowed. */}
+      {userRole === 'operator' && <OperatorPortalView lang={lang} t={t} onRoleSwitch={(role) => { if (role === 'farmer') { setIsAuthenticated(false); persistentRepo.saveActiveFarmer(null); } }} />}
+      {userRole === 'admin' && <AdminPortalView lang={lang} t={t} onRoleSwitch={(role) => { if (role === 'farmer') { setIsAuthenticated(false); persistentRepo.saveActiveFarmer(null); } }} />}
 
 
 

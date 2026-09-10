@@ -218,6 +218,24 @@ export const persistentRepo = {
     }
   },
 
+  // Operator Payments Ledger
+  savePaymentsLedger(ledger: any[]) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('farmsol_payments_ledger', JSON.stringify(ledger));
+    } catch (e) {}
+  },
+
+  getPaymentsLedger(): any[] | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem('farmsol_payments_ledger');
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
   saveOperators(operators: any[]) {
     if (typeof window === 'undefined') return;
     try {
