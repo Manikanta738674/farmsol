@@ -15,6 +15,7 @@ router.post('/gate/scan', OperatorController.scanGateQR);
 router.post('/quality', OperatorController.recordQuality);
 router.post('/weighing', OperatorController.recordWeighing);
 router.post('/procurement/complete', OperatorController.completeProcurement);
+router.post('/payment/settle', OperatorController.settlePayment);
 router.get('/reports', OperatorController.getDailyReports);
 
 export default router;

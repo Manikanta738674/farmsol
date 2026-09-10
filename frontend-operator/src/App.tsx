@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { FarmSolLogo } from './components/FarmSolLogo';
+import { io } from 'socket.io-client';
 
 const API_BASE = 'http://localhost:5000/api/v1';
 
@@ -152,11 +153,36 @@ export default function App() {
   ]);
 
   // Payments Ledger Data
-  const [paymentsLedger] = useState<any[]>([
+  const [paymentsLedger, setPaymentsLedger] = useState<any[]>([
     { id: 'DBT-2026-9041', tokenId: 'PDC-110294', farmer: 'M. Venkata Reddy', crop: 'Paddy (Grade A)', weight: 80, msp: 2300, amount: 184000, bank: 'SBI A/C ****9901', utr: 'SBIN002948102', status: 'SUCCESS', date: '01 Sep 2026' },
     { id: 'DBT-2026-9038', tokenId: 'PDC-009182', farmer: 'G. Apparao', crop: 'Cotton (Medium Staple)', weight: 65, msp: 6620, amount: 430300, bank: 'Union Bank A/C ****4412', utr: 'UBIN004810293', status: 'SUCCESS', date: '31 Aug 2026' },
     { id: 'DBT-2026-9035', tokenId: 'PDC-881920', farmer: 'P. Krishna Murthy', crop: 'Paddy (Common)', weight: 110, msp: 2183, amount: 240130, bank: 'SBI A/C ****7732', utr: 'SBIN001928471', status: 'SUCCESS', date: '31 Aug 2026' }
   ]);
+
+  // Payment Settlement Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [paymentStatusChoice, setPaymentStatusChoice] = useState<'COMPLETED' | 'PENDING'>('COMPLETED');
+  const [paymentUtrInput, setPaymentUtrInput] = useState<string>(`UTR-20260902-${Math.floor(10000 + Math.random() * 90000)}`);
+  const [paymentNotes, setPaymentNotes] = useState<string>('Standard MSP Direct Benefit Transfer verified and cleared by Mandi Officer.');
+  const [isSettlingPayment, setIsSettlingPayment] = useState<boolean>(false);
+  const [socket, setSocket] = useState<any>(null);
+
+  useEffect(() => {
+    let s: any = null;
+    try {
+      s = io('http://localhost:5000', { transports: ['websocket', 'polling'] });
+      s.on('connect', () => {
+        s.emit('join:operator', currentOperator.id);
+        s.emit('join:centre', currentOperator.centreId);
+      });
+      setSocket(s);
+    } catch (e) {
+      console.warn('Socket connect error in operator:', e);
+    }
+    return () => {
+      if (s) s.disconnect();
+    };
+  }, [currentOperator.id, currentOperator.centreId]);
 
   const handleLoginSubmit = () => {
     setAuthLoading(true);
@@ -228,24 +254,140 @@ export default function App() {
 
   const handleCompleteProcurement = () => {
     if (!currentServing) return;
-    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    setPaymentStatusChoice('COMPLETED');
+    setPaymentUtrInput(`UTR-20260902-${Math.floor(10000 + Math.random() * 90000)}`);
+    setShowPaymentModal(true);
+  };
+
+  const handleSettlePayment = async () => {
+    if (!currentServing) return;
+    setIsSettlingPayment(true);
     const netQtl = currentServing.netQuintals || ((currentServing.grossWeight - currentServing.tareWeight) / 100) || currentServing.quantityQuintals;
     const payout = netQtl * currentServing.mspRate;
+    const isCompleted = paymentStatusChoice === 'COMPLETED';
+
+    const payload = {
+      bookingId: currentServing.bookingId || 'BK-2026-000845',
+      tokenId: currentServing.tokenId,
+      farmerId: currentServing.farmerId || 'FR-AP-2026-000124',
+      farmerName: currentServing.farmerName || 'Prudhvi Pavan',
+      amount: payout,
+      status: paymentStatusChoice,
+      utr: paymentUtrInput,
+      paymentMode: 'Direct Benefit Transfer (DBT)',
+      centreId: currentOperator.centreId,
+      centreName: currentOperator.centreName,
+      operatorId: currentOperator.id,
+      notes: paymentNotes,
+      crop: currentServing.crop,
+      quantityQuintals: netQtl
+    };
+
+    // Emit live WebSocket event to Farmer & Admin
+    if (socket) {
+      socket.emit('payment:update', payload);
+
+      // Generate localized SMS text for farmer push notification
+      const teluguSms = isCompleted
+        ? `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} మొత్తం DBT ద్వారా మీ బ్యాంక్ ఖాతాలో జమ చేయబడింది. UTR: ${payload.utr}. - వినియోగదారుల వ్యవహారాల మంత్రిత్వ శాఖ (భారత ప్రభుత్వం)`
+        : `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} చెల్లింపు 'బాకీ (Pending)' గా నమోదు చేయబడింది. ధృవీకరణ పూర్తయ్యాక జమ చేయబడుతుంది. - భారత ప్రభుత్వం`;
+
+      socket.emit('sms:notification', {
+        farmerId: payload.farmerId,
+        sender: 'VD-FARMSOL',
+        message: teluguSms,
+        type: 'PAYMENT',
+        status: payload.status,
+        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+
+    // Try sending to backend API
+    try {
+      await fetch(`${API_BASE}/operator/payment/settle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('Backend payment settle call failed, proceeding with local & socket state:', e);
+    }
+
+    setIsSettlingPayment(false);
+    setShowPaymentModal(false);
+
+    // Update queue list
+    setQueueList((prev) =>
+      prev.map((q) =>
+        q.tokenId === currentServing.tokenId
+          ? {
+              ...q,
+              stage: 'COMPLETED',
+              status: 'COMPLETED',
+              paymentStatus: paymentStatusChoice,
+              paymentAmount: payout,
+              utr: paymentUtrInput
+            }
+          : q
+      )
+    );
+
+    // Update payments ledger
+    setPaymentsLedger((prev) => [
+      {
+        id: `DBT-${Date.now().toString().slice(-6)}`,
+        tokenId: currentServing.tokenId,
+        farmer: currentServing.farmerName,
+        crop: currentServing.crop,
+        weight: netQtl,
+        msp: currentServing.mspRate,
+        amount: payout,
+        bank: 'SBI A/C ****5512',
+        utr: paymentUtrInput,
+        status: isCompleted ? 'SUCCESS' : 'PENDING',
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      },
+      ...prev
+    ]);
+
+    if (isCompleted) {
+      confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+    }
+
     const cert = {
       certNo: `DOCA-PROC-${Math.floor(100000 + Math.random() * 900000)}`,
       tokenId: currentServing.tokenId,
       farmerName: currentServing.farmerName || 'Prudhvi Pavan',
+      farmerId: currentServing.farmerId || 'FR-AP-2026-000124',
+      farmerPhone: currentServing.farmerPhone || '+91 9125421544',
       crop: currentServing.crop,
       netQuintals: netQtl,
+      grossWeight: currentServing.grossWeight || 7250,
+      tareWeight: currentServing.tareWeight || 2750,
+      moisture: currentServing.moisture || 14.2,
       mspRate: currentServing.mspRate,
       totalPayout: payout,
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       centre: currentOperator.centreName,
-      dbtStatus: 'DBT TRANSFER TRIGGERED (Direct Credit to Aadhaar-Linked Bank A/C)'
+      location: currentOperator.location,
+      operatorName: currentOperator.name,
+      operatorId: currentOperator.id,
+      bankAccount: 'State Bank of India (A/C: ****5512)',
+      utrRef: paymentUtrInput,
+      dbtStatus: isCompleted
+        ? '✓ DIRECT BENEFIT TRANSFER (DBT) EXECUTED'
+        : '⏳ PAYMENT PENDING MANDI CLEARANCE'
     };
+    setSelectedPrintSlipData(cert);
     setCompletedCertData(cert);
     setShowCertModal(true);
     setCurrentServing(null);
+
+    alert(
+      isCompleted
+        ? `Payment of ₹${payout.toLocaleString('en-IN')} marked COMPLETED for Token #${payload.tokenId}. Real-time SMS dispatched to farmer!`
+        : `Payment of ₹${payout.toLocaleString('en-IN')} marked PENDING for Token #${payload.tokenId}. Status SMS dispatched to farmer.`
+    );
   };
 
   const handleOpenPrintSlip = (item: any) => {
@@ -361,7 +503,7 @@ export default function App() {
               </div>
               <div className="strength-bars"><div className="strength-bar-fill"></div></div>
               <div className="strength-checklist">
-                <span>✓ 8+ chars</span><span>✓ Upper & lower</span><span>✓ Number (0-9)</span><span>✓ Symbol (@#$)</span>
+                <span>8+ chars</span><span>Upper & lower</span><span>Number (0-9)</span><span>Symbol (@#$)</span>
               </div>
             </div>
 
@@ -1191,6 +1333,163 @@ export default function App() {
               <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontWeight: 600 }} onClick={() => setShowPrintSlipModal(false)}>Close</button>
               <button style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#15803d', color: '#ffffff', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => window.print()}>
                 Print Official Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT SETTLEMENT & DBT DISBURSAL MODAL */}
+      {showPaymentModal && currentServing && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: 540 }}>
+            <div className="modal-header-flex">
+              <div>
+                <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: 4, fontWeight: 800 }}>
+                  STEP 5 • FINANCIAL SETTLEMENT
+                </span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: 4 }}>
+                  Disburse Payment & Settle DBT
+                </h3>
+              </div>
+              <button
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 700 }}
+                onClick={() => setShowPaymentModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Farmer & Payout Summary Box */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, margin: '14px 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, fontSize: '0.82rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>FARMER & TOKEN</span>
+                  <div style={{ fontWeight: 800, color: '#0f172a' }}>{currentServing.farmerName}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700 }}>Token: {currentServing.tokenId}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>COMMODITY & NET WEIGHT</span>
+                  <div style={{ fontWeight: 800, color: '#0f172a' }}>{currentServing.crop}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    {currentServing.netQuintals || ((currentServing.grossWeight - currentServing.tareWeight) / 100) || currentServing.quantityQuintals} Qtl @ ₹{currentServing.mspRate}/Qtl
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px dashed #cbd5e1', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#166534' }}>TOTAL PAYABLE AMOUNT:</span>
+                <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#15803d' }}>
+                  ₹{((currentServing.netQuintals || ((currentServing.grossWeight - currentServing.tareWeight) / 100) || currentServing.quantityQuintals) * currentServing.mspRate).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Status Choice (COMPLETED vs PENDING) */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155', display: 'block', marginBottom: 8 }}>
+                SELECT PAYMENT SETTLEMENT STATUS *
+              </label>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: paymentStatusChoice === 'COMPLETED' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                    background: paymentStatusChoice === 'COMPLETED' ? '#f0fdf4' : '#ffffff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={paymentStatusChoice === 'COMPLETED'}
+                    onChange={() => setPaymentStatusChoice('COMPLETED')}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#15803d', fontSize: '0.9rem' }}>
+                      Mark as COMPLETED (Funds Released via DBT / Direct Transfer)
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: 2 }}>
+                      Payment credited directly to farmer's Aadhaar bank account. Dispatches instant confirmation SMS with UTR reference.
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: paymentStatusChoice === 'PENDING' ? '2px solid #d97706' : '1px solid #cbd5e1',
+                    background: paymentStatusChoice === 'PENDING' ? '#fffbeb' : '#ffffff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="paymentStatus"
+                    checked={paymentStatusChoice === 'PENDING'}
+                    onChange={() => setPaymentStatusChoice('PENDING')}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#b45309', fontSize: '0.9rem' }}>
+                      Mark as PENDING (Awaiting Bank Authorization / Review)
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: 2 }}>
+                      Payment record saved with Pending status. Dispatches SMS alert notifying farmer that amount is in processing queue.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Bank UTR & Notes */}
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label-auth">Bank UTR / Transaction Reference *</label>
+              <input
+                type="text"
+                className="input-box-auth"
+                value={paymentUtrInput}
+                onChange={(e) => setPaymentUtrInput(e.target.value)}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label-auth">Operator Notes & Verification Remarks</label>
+              <input
+                type="text"
+                className="input-box-auth"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn-header-secondary"
+                style={{ flex: 1 }}
+                onClick={() => setShowPaymentModal(false)}
+                disabled={isSettlingPayment}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-login-green"
+                style={{ flex: 1.5, background: paymentStatusChoice === 'COMPLETED' ? '#16a34a' : '#d97706' }}
+                onClick={handleSettlePayment}
+                disabled={isSettlingPayment}
+              >
+                {isSettlingPayment ? 'Disbursing & Notifying...' : `Confirm ${paymentStatusChoice} & Send SMS`}
               </button>
             </div>
           </div>

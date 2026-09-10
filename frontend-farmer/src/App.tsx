@@ -3,6 +3,8 @@ import confetti from 'canvas-confetti';
 import { translations, Language } from './i18n/translations';
 import { QRCodeCanvas } from './components/QRCodeCanvas';
 import { FarmSolLogo } from './components/FarmSolLogo';
+import { io } from 'socket.io-client';
+import { COMPREHENSIVE_CROPS, CROP_CATEGORIES } from '../../shared/src/constants/crops';
 
 const getHost = () => {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
@@ -33,6 +35,161 @@ interface ActiveBooking {
   currentServedToken: string | null;
   mspRate: number;
   estimatedPayout: number;
+  // Dynamic Payment & Assaying Status
+  paymentStatus?: 'PENDING' | 'COMPLETED' | 'PROCESSING';
+  paymentAmount?: number;
+  paymentUtr?: string;
+  paymentTimestamp?: string;
+  paymentMode?: string;
+  qualityGrade?: string;
+  moisturePercent?: number;
+  actualWeightQuintals?: number;
+}
+
+interface RealtimeSmsAlert {
+  id: string;
+  sender: string;
+  timestamp: string;
+  message: string;
+  type: 'BOOKING' | 'GATE_ENTRY' | 'QUALITY' | 'WEIGHING' | 'PAYMENT' | 'INFO';
+  status: 'COMPLETED' | 'PENDING' | 'INFO';
+}
+
+// Master Mandi Procurement Centres with Geolocation Coordinates & Capacities
+const MASTER_CENTRES = [
+  {
+    centreId: 'PC-AP-KKD-0402',
+    name: 'Sri Lakshmi APMC Procurement Centre #402',
+    nameTe: 'శ్రీ లక్ష్మి APMC సేకరణ కేంద్రం #402',
+    nameHi: 'श्री लक्ष्मी एपीएमसी खरीद केंद्र #402',
+    district: 'Kakinada, East Godavari',
+    districtTe: 'కాకినాడ, తూర్పు గోదావరి',
+    districtHi: 'काकीनाडा, पूर्वी गोदावरी',
+    lat: 16.9891,
+    lng: 82.2475,
+    coords: '16.9891,82.2475',
+    address: 'Kakinada APMC Market Road, NH-16',
+    addressTe: 'కాకినాడ APMC మార్కెట్ రోడ్, NH-16',
+    addressHi: 'काकीनाडा एपीएमसी मार्केट रोड, एनएच-16',
+    contact: '+91 98480 11223',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1500,
+    currentQueueCount: 4,
+    avgWaitMins: 12,
+    trafficStatus: 'LOW' as const
+  },
+  {
+    centreId: 'PC-AP-RJY-0201',
+    name: 'Godavari Green Mandi Kendra #201',
+    nameTe: 'గోదావరి గ్రీన్ మండి కేంద్రం #201',
+    nameHi: 'गोदावरी ग्रीन मंडी केंद्र #201',
+    district: 'Rajahmundry, East Godavari',
+    districtTe: 'రాజమండ్రి, తూర్పు గోదావరి',
+    districtHi: 'राजमुंदरी, पूर्वी गोदावरी',
+    lat: 17.0005,
+    lng: 81.7799,
+    coords: '17.0005,81.7799',
+    address: 'Rajahmundry Rythu Bazar Yard',
+    addressTe: 'రాజమండ్రి రైతు బజార్ యార్డ్',
+    addressHi: 'राजमुंदरी रायथू बाजार यार्ड',
+    contact: '+91 98480 44556',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1200,
+    currentQueueCount: 9,
+    avgWaitMins: 25,
+    trafficStatus: 'MODERATE' as const
+  },
+  {
+    centreId: 'PC-AP-GNT-0305',
+    name: 'AMC Central APMC Market Yard #305',
+    nameTe: 'AMC సెంట్రల్ APMC మార్కెట్ యార్డ్ #305',
+    nameHi: 'एएमसी सेंट्रल एपीएमसी मार्केट यार्ड #305',
+    district: 'Guntur, Andhra Pradesh',
+    districtTe: 'గుంటూరు, ఆంధ్రప్రదేశ్',
+    districtHi: 'गुंटूर, आंध्र प्रदेश',
+    lat: 16.3067,
+    lng: 80.4365,
+    coords: '16.3067,80.4365',
+    address: 'Guntur Chilli Market Yard Highway',
+    addressTe: 'గుంటూరు మిర్చి మార్కెట్ యార్డ్ హైవే',
+    addressHi: 'गुंटूर मिर्च मार्केट यार्ड हाईवे',
+    contact: '+91 94401 88990',
+    hours: '07:30 AM - 06:30 PM',
+    dailyCapacityQuintals: 2000,
+    currentQueueCount: 15,
+    avgWaitMins: 38,
+    trafficStatus: 'MODERATE' as const
+  },
+  {
+    centreId: 'PC-AP-VSKP-0108',
+    name: 'Visakha Kisan Seva Mandi #108',
+    nameTe: 'విశాఖ కిసాన్ సేవా మండి #108',
+    nameHi: 'विशाखा किसान सेवा मंडी #108',
+    district: 'Visakhapatnam, Andhra Pradesh',
+    districtTe: 'విశాఖపట్నం, ఆంధ్రప్రదేశ్',
+    districtHi: 'विशाखापत्तनम, आंध्र प्रदेश',
+    lat: 17.6868,
+    lng: 83.2185,
+    coords: '17.6868,83.2185',
+    address: 'Anakapalle Jaggery & Grain APMC',
+    addressTe: 'అనకాపల్లి బెల్లం & ధాన్యపు మార్కెట్',
+    addressHi: 'अनकापल्ले गुड़ और अनाज मंडी',
+    contact: '+91 94401 22334',
+    hours: '08:00 AM - 05:30 PM',
+    dailyCapacityQuintals: 1000,
+    currentQueueCount: 18,
+    avgWaitMins: 45,
+    trafficStatus: 'HIGH' as const
+  },
+  {
+    centreId: 'PC-AP-VJA-0504',
+    name: 'Krishna Delta APMC Kendra #504',
+    nameTe: 'కృష్ణా డెల్టా APMC కేంద్రం #504',
+    nameHi: 'कृष्णा डेल्टा एपीएमसी केंद्र #504',
+    district: 'Vijayawada, Andhra Pradesh',
+    districtTe: 'విజయవాడ, ఆంధ్రప్రదేశ్',
+    districtHi: 'विजयवाड़ा, आंध्र प्रदेश',
+    lat: 16.5062,
+    lng: 80.6480,
+    coords: '16.5062,80.6480',
+    address: 'Auto Nagar Grain Yard, Vijayawada',
+    addressTe: 'ఆటో నగర్ గ్రైన్ యార్డ్, విజయవాడ',
+    addressHi: 'ऑटो नगर अनाज यार्ड, विजयवाड़ा',
+    contact: '+91 91254 77889',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1600,
+    currentQueueCount: 22,
+    avgWaitMins: 50,
+    trafficStatus: 'HIGH' as const
+  }
+];
+
+// Haversine Formula for Accurate Geodesic Distance
+function calculateHaversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
+// AI/ML Multi-Factor Ranking Formulation
+function computeAiMandiScore(
+  distanceKm: number,
+  avgWaitMins: number,
+  dailyCapacity: number,
+  trafficStatus: 'LOW' | 'MODERATE' | 'HIGH'
+): number {
+  const proximityScore = Math.max(10, 100 - (distanceKm * 2.5));
+  const waitScore = Math.max(20, 100 - (avgWaitMins * 1.5));
+  const capacityScore = Math.min(100, (dailyCapacity / 1500) * 100);
+  const trafficBonus = trafficStatus === 'LOW' ? 12 : trafficStatus === 'MODERATE' ? 4 : -8;
+  const total = Math.round((0.45 * proximityScore) + (0.25 * waitScore) + (0.20 * capacityScore) + trafficBonus);
+  return Math.min(99, Math.max(50, total));
 }
 
 export default function App() {
@@ -149,8 +306,62 @@ export default function App() {
     landArea: farmer.landArea || '4.5 Acres (Verified)',
     crops: farmer.crops || 'Paddy (Grade A), Cotton'
   });
+  // Real-Time GPS Geolocation Coordinates & AI State
+  const [farmerCoords, setFarmerCoords] = useState<{ lat: number; lng: number }>({ lat: 16.9800, lng: 82.2400 });
+  const [gpsActive, setGpsActive] = useState<boolean>(false);
   const [gpsDetecting, setGpsDetecting] = useState<boolean>(false);
   const [gpsNearestStatus, setGpsNearestStatus] = useState<string>('');
+
+  const requestUserLocation = () => {
+    setGpsDetecting(true);
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setFarmerCoords({ lat, lng });
+          setGpsActive(true);
+          setGpsDetecting(false);
+          setGpsNearestStatus(t.gpsDetectedSuccess || 'GPS Location detected! Live coordinates mapped to nearest mandis.');
+        },
+        (err) => {
+          console.warn('Geolocation fallback:', err.message);
+          setFarmerCoords({ lat: 16.9800, lng: 82.2400 });
+          setGpsActive(true);
+          setGpsDetecting(false);
+          setGpsNearestStatus(t.locationPermissionFallback || 'Using registered district GPS coordinates (Kakinada / East Godavari).');
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    } else {
+      setFarmerCoords({ lat: 16.9800, lng: 82.2400 });
+      setGpsActive(true);
+      setGpsDetecting(false);
+      setGpsNearestStatus(t.locationPermissionFallback || 'Using registered district GPS coordinates (Kakinada / East Godavari).');
+    }
+  };
+
+  useEffect(() => {
+    requestUserLocation();
+  }, []);
+
+  const centresList = MASTER_CENTRES.map((c) => {
+    const dist = calculateHaversineKm(farmerCoords.lat, farmerCoords.lng, c.lat, c.lng);
+    const score = computeAiMandiScore(dist, c.avgWaitMins, c.dailyCapacityQuintals, c.trafficStatus);
+    const localizedName = lang === 'te' ? c.nameTe : lang === 'hi' ? c.nameHi : c.name;
+    const localizedDistrict = lang === 'te' ? c.districtTe : lang === 'hi' ? c.districtHi : c.district;
+    const localizedAddress = lang === 'te' ? c.addressTe : lang === 'hi' ? c.addressHi : c.address;
+    return {
+      ...c,
+      distanceKm: dist,
+      aiScore: score,
+      nameLocalized: localizedName,
+      districtLocalized: localizedDistrict,
+      addressLocalized: localizedAddress
+    };
+  }).sort((a, b) => b.aiScore - a.aiScore);
+
+  const topRecommendedMandi = centresList[0];
 
   // Reschedule & Cancel Modals
   const [showRescheduleModal, setShowRescheduleModal] = useState<boolean>(false);
@@ -217,86 +428,170 @@ export default function App() {
     }
   ]);
 
-  // Master Crops & Dynamic Market Rates (DoCA 2026 Guaranteed MSP)
+  // Master Crops & Global Crop Catalog (DoCA 2026 Guaranteed MSP)
   const [cropsList, setCropsList] = useState<any[]>(() => {
-    const saved = localStorage.getItem('smartfarmer_crop_rates');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map((c: any) => ({
-          cropId: c.id || c.cropId,
-          name: c.name,
-          mspRatePerQuintal: c.msp,
-          marketPricePerQuintal: c.marketPrice || c.msp + 80,
-          season: c.season || 'Kharif 2026',
-          icon: c.name.includes('Cotton') ? '' : c.name.includes('Wheat') ? '' : '',
-          lastUpdated: c.lastUpdated || 'Live'
-        }));
-      } catch (e) {}
-    }
-    return [
-      { cropId: 'CR-PADDY-GRADE-A', key: 'cropPaddyGradeA', name: 'Paddy (Grade A)', mspRatePerQuintal: 2300, marketPricePerQuintal: 2380, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-PADDY-COMMON', key: 'cropPaddyCommon', name: 'Paddy (Common)', mspRatePerQuintal: 2183, marketPricePerQuintal: 2240, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-COTTON-MEDIUM', key: 'cropCottonMedium', name: 'Cotton (Medium Staple)', mspRatePerQuintal: 6620, marketPricePerQuintal: 6750, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-COTTON-LONG', key: 'cropCottonLong', name: 'Cotton (Long Staple)', mspRatePerQuintal: 7020, marketPricePerQuintal: 7150, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-WHEAT', key: 'cropWheatSharbati', name: 'Wheat (Sharbati)', mspRatePerQuintal: 2275, marketPricePerQuintal: 2340, season: 'Rabi 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-MAIZE', key: 'cropMaizeKharif', name: 'Maize (Kharif)', mspRatePerQuintal: 2090, marketPricePerQuintal: 2150, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-RED-GRAM', key: 'cropRedGramTur', name: 'Red Gram (Arhar/Tur)', mspRatePerQuintal: 7000, marketPricePerQuintal: 7180, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-BENGAL-GRAM', key: 'cropBengalGramChana', name: 'Bengal Gram (Chana)', mspRatePerQuintal: 5440, marketPricePerQuintal: 5580, season: 'Rabi 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-BLACK-GRAM', key: 'cropBlackGramUrad', name: 'Black Gram (Urad)', mspRatePerQuintal: 6950, marketPricePerQuintal: 7100, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-GREEN-GRAM', key: 'cropGreenGramMoong', name: 'Green Gram (Moong)', mspRatePerQuintal: 8558, marketPricePerQuintal: 8700, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-GROUNDNUT', key: 'cropGroundnut', name: 'Groundnut (Peanut)', mspRatePerQuintal: 6377, marketPricePerQuintal: 6500, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-SOYBEAN', key: 'cropSoybean', name: 'Soybean (Yellow)', mspRatePerQuintal: 4600, marketPricePerQuintal: 4720, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-SUNFLOWER', key: 'cropSunflower', name: 'Sunflower Seeds', mspRatePerQuintal: 6760, marketPricePerQuintal: 6890, season: 'Kharif 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-SUGARCANE', key: 'cropSugarcane', name: 'Sugarcane', mspRatePerQuintal: 315, marketPricePerQuintal: 335, season: 'Annual 2026', lastUpdated: 'Live' },
-      { cropId: 'CR-RED-CHILLI', key: 'cropRedChilli', name: 'Red Chilli (Spices)', mspRatePerQuintal: 12500, marketPricePerQuintal: 12900, season: 'Rabi 2026', lastUpdated: 'Live' }
-    ];
+    return COMPREHENSIVE_CROPS.map((c) => ({
+      cropId: c.id,
+      id: c.id,
+      name: c.name,
+      nameTe: c.nameTe,
+      nameHi: c.nameHi,
+      category: c.category,
+      mspRatePerQuintal: c.mspRatePerQuintal,
+      marketPricePerQuintal: c.mspRatePerQuintal + 80,
+      season: 'Season 2026',
+      icon: c.icon,
+      isCustom: c.isCustom || false,
+      lastUpdated: 'Live'
+    }));
   });
+
+  const [cropCategoryFilter, setCropCategoryFilter] = useState<string>('ALL');
+  const [cropSearchQuery, setCropSearchQuery] = useState<string>('');
+  const [customCropName, setCustomCropName] = useState<string>('');
+  const [customCropRate, setCustomCropRate] = useState<number>(2500);
+  const [activeSmsAlert, setActiveSmsAlert] = useState<RealtimeSmsAlert | null>(null);
 
   // Helper to translate crop names based on active language
   const getCropTitle = (cropNameOrKey: string) => {
-    const cropObj = cropsList.find((c) => c.name === cropNameOrKey || c.cropId === cropNameOrKey || c.key === cropNameOrKey);
-    if (cropObj && cropObj.key && (t as any)[cropObj.key]) {
-      return (t as any)[cropObj.key];
+    const cropObj = cropsList.find(
+      (c) => c.name === cropNameOrKey || c.cropId === cropNameOrKey || c.id === cropNameOrKey || c.key === cropNameOrKey
+    );
+    if (cropObj) {
+      if (lang === 'te' && cropObj.nameTe) return cropObj.nameTe;
+      if (lang === 'hi' && cropObj.nameHi) return cropObj.nameHi;
+      if (cropObj.key && (t as any)[cropObj.key]) return (t as any)[cropObj.key];
+      return cropObj.name;
     }
     return cropNameOrKey;
   };
 
-  // Listen to live rate updates from Admin
+  // Real-Time WebSocket Synchronization with Backend & Mandi Desks
   useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem('smartfarmer_crop_rates');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setCropsList(parsed.map((c: any) => ({
-            cropId: c.id || c.cropId,
-            key: c.key || 'cropPaddyGradeA',
-            name: c.name,
-            mspRatePerQuintal: c.msp,
-            marketPricePerQuintal: c.marketPrice || c.msp + 80,
-            season: c.season || 'Kharif 2026',
-            icon: '',
-            lastUpdated: c.lastUpdated || 'Live'
-          })));
-        } catch (e) {}
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(handleStorageChange, 2000);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+    let socket: any = null;
+    try {
+      socket = io(`http://${getHost()}:5000`, {
+        transports: ['websocket', 'polling']
+      });
 
-  const [centresList] = useState<any[]>([
-    { centreId: 'PC-AP-KKD-0402', name: 'Sri Lakshmi APMC Procurement Centre #402', district: 'Kakinada, East Godavari', distanceKm: 4.2, coords: '16.9891,82.2475', address: 'Kakinada APMC Market Road, NH-16', contact: '+91 98480 11223', hours: '08:00 AM - 06:00 PM' },
-    { centreId: 'PC-AP-RJY-0201', name: 'Godavari Green Mandi Kendra #201', district: 'Rajahmundry, East Godavari', distanceKm: 8.5, coords: '17.0005,81.7799', address: 'Rajahmundry Rythu Bazar Yard', contact: '+91 98480 44556', hours: '08:00 AM - 06:00 PM' },
-    { centreId: 'PC-AP-GNT-0305', name: 'AMC Central APMC Market Yard #305', district: 'Guntur, Andhra Pradesh', distanceKm: 14.1, coords: '16.3067,80.4365', address: 'Guntur Chilli Market Yard Highway', contact: '+91 94401 88990', hours: '07:30 AM - 06:30 PM' },
-    { centreId: 'PC-AP-VSKP-0108', name: 'Visakha Kisan Seva Mandi #108', district: 'Visakhapatnam, Andhra Pradesh', distanceKm: 18.3, coords: '17.6868,83.2185', address: 'Anakapalle Jaggery & Grain APMC', contact: '+91 94401 22334', hours: '08:00 AM - 05:30 PM' },
-    { centreId: 'PC-AP-VJA-0504', name: 'Krishna Delta APMC Kendra #504', district: 'Vijayawada, Andhra Pradesh', distanceKm: 22.0, coords: '16.5062,80.6480', address: 'Auto Nagar Grain Yard, Vijayawada', contact: '+91 91254 77889', hours: '08:00 AM - 06:00 PM' }
-  ]);
+      socket.on('connect', () => {
+        socket.emit('join:farmer', farmer.id);
+        if (activeBooking?.centreId) {
+          socket.emit('join:centre', activeBooking.centreId);
+        }
+        if (activeBooking?.bookingId) {
+          socket.emit('join:booking', activeBooking.bookingId);
+        }
+      });
+
+      // Real-Time Payment Broadcast from Operator Desk
+      socket.on('payment:update', (data: any) => {
+        const isTarget =
+          !data.farmerId ||
+          data.farmerId === farmer.id ||
+          (activeBooking && (data.bookingId === activeBooking.bookingId || data.tokenId === activeBooking.tokenId));
+        if (isTarget && activeBooking) {
+          const isCompleted = data.status === 'COMPLETED';
+          setActiveBooking((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  paymentStatus: data.status,
+                  paymentAmount: data.amount || prev.estimatedPayout,
+                  paymentUtr: data.utr || 'UTR' + Date.now(),
+                  paymentTimestamp:
+                    new Date().toLocaleDateString('en-IN') +
+                    ' ' +
+                    new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                  paymentMode: data.paymentMode || 'Direct Benefit Transfer (DBT)',
+                  currentStage: isCompleted ? 'COMPLETED' : prev.currentStage
+                }
+              : null
+          );
+
+          // Update recent procurements
+          setRecentProcurements((prev) => [
+            {
+              procurementId: `PRC-${Date.now().toString().slice(-6)}`,
+              date: new Date().toLocaleDateString('en-IN'),
+              crop: activeBooking.cropName,
+              netWeightQuintals: activeBooking.expectedQuantityQuintals,
+              ratePerQuintal: activeBooking.mspRate,
+              totalAmount: data.amount || activeBooking.estimatedPayout,
+              paymentStatus: data.status,
+              paymentMode: data.paymentMode || 'Direct Benefit Transfer (DBT)',
+              utr: data.utr || 'UTR' + Date.now(),
+              timestamp:
+                new Date().toLocaleDateString('en-IN') +
+                ', ' +
+                new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+            },
+            ...prev
+          ]);
+
+          // Real-Time SMS Message Generation in selected language
+          let smsText = '';
+          if (lang === 'te') {
+            smsText = isCompleted
+              ? `డియర్ ${farmer.name}, మీ టోకెన్ #${activeBooking.tokenId} కు గాను ₹${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} మొత్తం DBT ద్వారా మీ బ్యాంక్ ఖాతాలో జమ చేయబడింది. UTR: ${data.utr || 'UTR' + Date.now()}. - వినియోగదారుల వ్యవహారాల మంత్రిత్వ శాఖ (భారత ప్రభుత్వం)`
+              : `డియర్ ${farmer.name}, మీ టోకెన్ #${activeBooking.tokenId} కు గాను ₹${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} చెల్లింపు 'బాకీ (Pending)' గా నమోదు చేయబడింది. ధృవీకరణ పూర్తయ్యాక జమ చేయబడుతుంది. - భారత ప్రభుత్వం`;
+          } else if (lang === 'hi') {
+            smsText = isCompleted
+              ? `प्रिय ${farmer.name}, आपके टोकन #${activeBooking.tokenId} हेतु ₹${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} की राशि DBT द्वारा आपके बैंक खाते में अंतरित कर दी गई है। UTR: ${data.utr || 'UTR' + Date.now()}। - उपभोक्ता मामले विभाग, भारत सरकार`
+              : `प्रिय ${farmer.name}, आपके टोकन #${activeBooking.tokenId} हेतु ₹${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} का भुगतान 'लंबित (Pending)' दर्ज किया गया है। शीघ्र ही बैंक में भेजा जाएगा। - भारत सरकार`;
+          } else {
+            smsText = isCompleted
+              ? `Dear ${farmer.name}, payment of Rs.${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} for Token #${activeBooking.tokenId} has been COMPLETED and credited via DBT. UTR: ${data.utr || 'UTR' + Date.now()}. - Dept of Consumer Affairs, GoI`
+              : `Dear ${farmer.name}, payment of Rs.${(data.amount || activeBooking.estimatedPayout).toLocaleString('en-IN')} for Token #${activeBooking.tokenId} is marked PENDING. Processing at Mandi Desk. - GoI`;
+          }
+
+          setActiveSmsAlert({
+            id: `SMS-${Date.now()}`,
+            sender: 'VD-FARMSOL',
+            timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+            message: smsText,
+            type: 'PAYMENT',
+            status: data.status
+          });
+
+          if (isCompleted) {
+            confetti({ particleCount: 100, spread: 80 });
+          }
+        }
+      });
+
+      // Real-Time SMS Event from Backend
+      socket.on('sms:notification', (data: any) => {
+        if (!data.farmerId || data.farmerId === farmer.id) {
+          setActiveSmsAlert({
+            id: `SMS-${Date.now()}`,
+            sender: data.sender || 'VD-FARMSOL',
+            timestamp:
+              data.timestamp ||
+              new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+            message: data.message,
+            type: data.type || 'INFO',
+            status: data.status || 'COMPLETED'
+          });
+        }
+      });
+
+      // Real-Time Queue Updates
+      socket.on('queue:update', (data: any) => {
+        if (data.bookingId && activeBooking && data.bookingId === activeBooking.bookingId) {
+          if (data.currentStage) {
+            setActiveBooking((prev) => (prev ? { ...prev, currentStage: data.currentStage } : null));
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Socket connection error in farmer app:', e);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [activeBooking, farmer.id, lang]);
 
   // Notifications & SMS Logs (Feature 8 & 13)
   const [notificationsList, setNotificationsList] = useState<any[]>([
@@ -483,10 +778,68 @@ export default function App() {
           <div className="auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <FarmSolLogo size="md" showTagline={true} />
             <div className="auth-badge" style={{ marginTop: 14 }}>
-              NATIONAL AGRICULTURAL ACCESS PORTAL
+              {t.portalBadge || 'NATIONAL AGRICULTURAL ACCESS PORTAL'}
             </div>
-            <h1 className="auth-title" style={{ fontSize: '1.35rem', marginTop: 4 }}>Smart Procure</h1>
-            <p className="auth-subtitle">From Farm to Market, Made Smarter.</p>
+            <h1 className="auth-title" style={{ fontSize: '1.35rem', marginTop: 4 }}>{t.appTitle || 'Smart Procure'}</h1>
+            <p className="auth-subtitle">{t.authSubtitle || 'From Farm to Market, Made Smarter.'}</p>
+          </div>
+
+          {/* Multi-Lingual Quick Language Switcher Bar */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14, width: '100%' }}>
+            <button
+              type="button"
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: 20,
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                border: lang === 'te' ? '2px solid #15803d' : '1px solid #cbd5e1',
+                background: lang === 'te' ? '#dcfce7' : '#ffffff',
+                color: lang === 'te' ? '#15803d' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => setLang('te')}
+            >
+              తెలుగు (Telugu)
+            </button>
+            <button
+              type="button"
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: 20,
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                border: lang === 'hi' ? '2px solid #15803d' : '1px solid #cbd5e1',
+                background: lang === 'hi' ? '#dcfce7' : '#ffffff',
+                color: lang === 'hi' ? '#15803d' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => setLang('hi')}
+            >
+              हिंदी (Hindi)
+            </button>
+            <button
+              type="button"
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: 20,
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                border: lang === 'en' ? '2px solid #15803d' : '1px solid #cbd5e1',
+                background: lang === 'en' ? '#dcfce7' : '#ffffff',
+                color: lang === 'en' ? '#15803d' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => setLang('en')}
+            >
+              English
+            </button>
           </div>
 
           {/* Main Sign In / Register Tabs */}
@@ -495,36 +848,36 @@ export default function App() {
               className={`auth-main-tab ${authMode === 'signin' ? 'active' : ''}`}
               onClick={() => setAuthMode('signin')}
             >
-              Sign In
+              {t.signIn || 'Sign In'}
             </button>
             <button
               className={`auth-main-tab ${authMode === 'signup' ? 'active' : ''}`}
               onClick={() => setAuthMode('signup')}
             >
-              Sign Up / Register
+              {t.signUp || 'Sign Up / Register'}
             </button>
           </div>
 
           {/* Role Switcher Label & Buttons */}
-          <div className="role-label">SIGN IN AS</div>
+          <div className="role-label">{t.signInAs || 'SIGN IN AS'}</div>
           <div className="role-selector">
             <button
               className={`role-btn ${userRole === 'farmer' ? 'active-farmer' : ''}`}
               onClick={() => { setUserRole('farmer'); setIsAuthenticated(false); }}
             >
-              Farmer
+              {t.farmer || 'Farmer'}
             </button>
             <button
               className={`role-btn ${userRole === 'operator' ? 'active-operator' : ''}`}
               onClick={() => { setUserRole('operator'); setIsAuthenticated(false); }}
             >
-              Operator
+              {t.operator || 'Operator'}
             </button>
             <button
               className={`role-btn ${userRole === 'admin' ? 'active-admin' : ''}`}
               onClick={() => { setUserRole('admin'); setIsAuthenticated(false); }}
             >
-              Admin
+              {t.admin || 'Admin'}
             </button>
           </div>
 
@@ -534,7 +887,7 @@ export default function App() {
               {!otpSent ? (
                 <div>
                   <label className="form-label-auth">
-                    Mobile Number <span>*</span>
+                    {t.mobileNumber || 'Mobile Number'} <span>*</span>
                   </label>
                   <div className="phone-input-group">
                     <div className="country-code">
@@ -545,7 +898,7 @@ export default function App() {
                       className="phone-input-field"
                       value={farmerMobile}
                       onChange={(e) => setFarmerMobile(e.target.value)}
-                      placeholder="Enter 10 digit mobile"
+                      placeholder={lang === 'te' ? '10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి' : lang === 'hi' ? '10 अंकों का मोबाइल नंबर दर्ज करें' : 'Enter 10 digit mobile'}
                       maxLength={10}
                     />
                   </div>
@@ -555,23 +908,23 @@ export default function App() {
                     onClick={() => setOtpSent(true)}
                     disabled={farmerMobile.length < 10}
                   >
-                    Send OTP
+                    {t.sendOtp || 'Send OTP'}
                   </button>
                 </div>
               ) : (
                 <div>
                   <div style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    OTP sent successfully to +91 *******{farmerMobile.slice(-3)}
+                    {lang === 'te' ? `+91 *******${farmerMobile.slice(-3)} నంబరుకు OTP విజయవంతంగా పంపబడింది` : lang === 'hi' ? `+91 *******${farmerMobile.slice(-3)} पर ओटीपी सफलतापूर्वक भेजा गया` : `OTP sent successfully to +91 *******${farmerMobile.slice(-3)}`}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
                     <label className="form-label-auth" style={{ margin: 0 }}>
-                      Enter OTP
+                      {t.enterOtp || 'Enter OTP'}
                     </label>
                     <span
                       style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 700, cursor: 'pointer' }}
                       onClick={() => setOtpSent(false)}
                     >
-                      Change Number
+                      {lang === 'te' ? 'నంబర్ మార్చండి' : lang === 'hi' ? 'नंबर बदलें' : 'Change Number'}
                     </span>
                   </div>
 
@@ -597,7 +950,7 @@ export default function App() {
                   </div>
 
                   <button className="btn-login-green" onClick={handleLoginSubmit}>
-                    {authLoading ? 'Verifying...' : 'Verify & Continue'}
+                    {authLoading ? (lang === 'te' ? 'ధృవీకరిస్తోంది...' : lang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...') : (t.verifyOtp || 'Verify & Continue')}
                   </button>
                 </div>
               )}
@@ -716,10 +1069,10 @@ export default function App() {
                   <div className="strength-bar-fill"></div>
                 </div>
                 <div className="strength-checklist">
-                  <span>✓ 8+ chars</span>
-                  <span>✓ Upper & lower</span>
-                  <span>✓ Number (0-9)</span>
-                  <span>✓ Symbol (@#$)</span>
+                  <span>8+ chars</span>
+                  <span>Upper & lower</span>
+                  <span>Number (0-9)</span>
+                  <span>Symbol (@#$)</span>
                 </div>
               </div>
 
@@ -804,6 +1157,58 @@ export default function App() {
               </div>
             </div>
 
+            {/* REAL-TIME IN-APP SMS PUSH NOTIFICATION BANNER */}
+            {activeSmsAlert && (
+              <div
+                className="sms-push-banner"
+                style={{
+                  margin: '8px 10px 4px',
+                  background: activeSmsAlert.status === 'COMPLETED' ? '#ecfdf5' : activeSmsAlert.status === 'PENDING' ? '#fffbeb' : '#f0fdf4',
+                  border: `1.5px solid ${activeSmsAlert.status === 'COMPLETED' ? '#10b981' : activeSmsAlert.status === 'PENDING' ? '#f59e0b' : '#15803d'}`,
+                  borderRadius: 12,
+                  padding: '9px 12px',
+                  boxShadow: '0 8px 20px -4px rgba(0,0,0,0.15)',
+                  position: 'relative',
+                  zIndex: 20
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: '0.64rem',
+                      fontWeight: 800,
+                      background: activeSmsAlert.status === 'COMPLETED' ? '#10b981' : activeSmsAlert.status === 'PENDING' ? '#f59e0b' : '#15803d',
+                      color: '#ffffff',
+                      padding: '1px 6px',
+                      borderRadius: 4
+                    }}>
+                      SMS • {activeSmsAlert.sender}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{activeSmsAlert.timestamp}</span>
+                  </div>
+                  <button
+                    type="button"
+                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
+                    onClick={() => setActiveSmsAlert(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#0f172a', lineHeight: 1.38, fontWeight: 600 }}>
+                  {activeSmsAlert.message}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, fontSize: '0.68rem', color: '#64748b' }}>
+                  <span>{t.smsDelivered || 'Delivered to registered mobile'}</span>
+                  <span style={{
+                    fontWeight: 800,
+                    color: activeSmsAlert.status === 'COMPLETED' ? '#047857' : activeSmsAlert.status === 'PENDING' ? '#b45309' : '#15803d'
+                  }}>
+                    ● {activeSmsAlert.status === 'COMPLETED' ? (t.paymentCompleted || 'PAID') : activeSmsAlert.status === 'PENDING' ? (t.paymentPending || 'PENDING') : 'ALERT'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Mobile App Bar Header */}
             <div className="mobile-app-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -814,28 +1219,72 @@ export default function App() {
                 />
                 <div>
                   <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#15803d', lineHeight: 1 }}>FARMSOL</div>
-                  <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 600 }}>Mobile Kisan App</div>
+                  <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 600 }}>{t.mobileKisanApp || 'Mobile Kisan App'}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
                   className="lang-selector-btn"
-                  style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                  style={{ padding: '3px 6px', fontSize: '0.68rem' }}
                   onClick={handleVoiceReadout}
+                  title={t.voicePrompt || 'Voice Assistance'}
                 >
                   {isSpeaking ? '...' : lang === 'te' ? 'వాయిస్' : lang === 'hi' ? 'आवाज़' : 'Voice'}
                 </button>
 
-                <button
-                  className="lang-selector-btn"
-                  style={{ padding: '3px 8px', fontSize: '0.72rem' }}
-                  onClick={() => setLang(lang === 'te' ? 'en' : lang === 'en' ? 'hi' : 'te')}
-                >
-                  {lang === 'te' ? 'తెలుగు' : lang === 'hi' ? 'हिंदी' : 'English'}
-                </button>
+                <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 16, padding: '2px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '2px 6px',
+                      fontSize: '0.68rem',
+                      borderRadius: 12,
+                      border: 'none',
+                      fontWeight: 800,
+                      background: lang === 'te' ? '#15803d' : 'transparent',
+                      color: lang === 'te' ? '#ffffff' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setLang('te')}
+                  >
+                    తెలుగు
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '2px 6px',
+                      fontSize: '0.68rem',
+                      borderRadius: 12,
+                      border: 'none',
+                      fontWeight: 800,
+                      background: lang === 'hi' ? '#15803d' : 'transparent',
+                      color: lang === 'hi' ? '#ffffff' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setLang('hi')}
+                  >
+                    हिंदी
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '2px 6px',
+                      fontSize: '0.68rem',
+                      borderRadius: 12,
+                      border: 'none',
+                      fontWeight: 800,
+                      background: lang === 'en' ? '#15803d' : 'transparent',
+                      color: lang === 'en' ? '#ffffff' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setLang('en')}
+                  >
+                    EN
+                  </button>
+                </div>
 
-                <div className="user-avatar" style={{ width: 28, height: 28, fontSize: '0.75rem' }}>
+                <div className="user-avatar" style={{ width: 26, height: 26, fontSize: '0.72rem' }}>
                   {farmer?.name?.charAt(0) || 'P'}
                 </div>
               </div>
@@ -1007,50 +1456,133 @@ export default function App() {
                       </div>
                     </div>
 
-                  {/* Google Maps Live Tracking & Directions Widget on Dashboard */}
-                  {(() => {
-                    const nearestMandi = centresList.find(c => c.centreId === selectedCentre) || centresList[0];
-                    return (
-                      <div className="gmaps-tracking-card" style={{ marginTop: 20 }}>
-                        <div className="gmaps-header-bar">
-                          <div>
-                            <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a' }}>
-                              GPS Live Mandi Tracking: {nearestMandi.name}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {nearestMandi.address} ({nearestMandi.distanceKm} km away)
-                            </div>
-                          </div>
-                          <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '3px 8px', borderRadius: 9999, fontWeight: 800 }}>
-                            ● Google Maps Live Directions
-                          </span>
-                        </div>
+                  {/* AI/ML NEAREST MANDI & ROUTE RECOMMENDATION CARD */}
+                  <div className="nearest-mandi-ai-card" style={{
+                    marginTop: 20,
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                    border: '2px solid #86efac',
+                    borderRadius: 16,
+                    padding: '18px 18px',
+                    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.08)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: '#15803d',
+                        color: '#ffffff',
+                        padding: '4px 10px',
+                        borderRadius: 9999,
+                        letterSpacing: '0.4px'
+                      }}>
+                        {t.aiRecommendationBadge || 'AI/ML OPTIMIZED RECOMMENDATION'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={requestUserLocation}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #bbf7d0',
+                          color: '#15803d',
+                          fontWeight: 700,
+                          fontSize: '0.72rem',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {gpsDetecting ? (t.locatingGps || 'Locating...') : (t.reDetectGps || 'Refresh GPS Location')}
+                      </button>
+                    </div>
 
-                        <div className="gmaps-iframe-container" style={{ height: 190 }}>
-                          <iframe
-                            title="Dashboard Google Maps Tracking"
-                            src={`https://maps.google.com/maps?q=${nearestMandi.coords}&z=14&output=embed`}
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          />
-                        </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>
+                      {t.yourNearestMandiTitle || 'Your Nearest MANDI / OPERATOR Places are:'}
+                    </div>
 
-                        <div className="gmaps-actions-row">
-                          <div style={{ fontSize: '0.75rem', color: '#334155' }}>
-                            Hours: {nearestMandi.hours} • Phone: {nearestMandi.contact}
-                          </div>
-                          <button
-                            type="button"
-                            className="lang-selector-btn"
-                            style={{ background: '#15803d', color: '#ffffff', borderColor: '#15803d', fontWeight: 700, fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                            onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=16.9800,82.2400&destination=${nearestMandi.coords}&travelmode=driving`, '_blank')}
-                          >
-                            {t.googleMapsDirections || 'Open Google Maps Directions'}
-                          </button>
-                        </div>
+                    <div style={{ fontSize: '1.18rem', fontWeight: 900, color: '#0f172a', marginBottom: 2 }}>
+                      {topRecommendedMandi.nameLocalized}
+                    </div>
+
+                    <div style={{ fontSize: '0.78rem', color: '#475569', marginBottom: 10 }}>
+                      {topRecommendedMandi.addressLocalized} • {topRecommendedMandi.districtLocalized} ({topRecommendedMandi.distanceKm} {t.distanceKm || 'km away'})
+                    </div>
+
+                    {gpsNearestStatus && (
+                      <div style={{ background: '#dcfce7', border: '1px solid #bbf7d0', padding: '6px 10px', borderRadius: 6, fontSize: '0.72rem', color: '#15803d', fontWeight: 700, marginBottom: 10 }}>
+                        {gpsNearestStatus}
                       </div>
-                    );
-                  })()}
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+                      <div style={{ background: '#ffffff', border: '1px solid #dcfce7', padding: '6px 10px', borderRadius: 8 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{t.aiMatchScore || 'AI Match'}</div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#15803d' }}>{topRecommendedMandi.aiScore}% Match</div>
+                      </div>
+                      <div style={{ background: '#ffffff', border: '1px solid #dcfce7', padding: '6px 10px', borderRadius: 8 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{t.estimatedWait || 'Est. Wait'}</div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a' }}>~{topRecommendedMandi.avgWaitMins} {t.mins || 'mins'}</div>
+                      </div>
+                      <div style={{ background: '#ffffff', border: '1px solid #dcfce7', padding: '6px 10px', borderRadius: 8 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{t.trafficCongestion || 'Traffic'}</div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#15803d' }}>{topRecommendedMandi.trafficStatus === 'LOW' ? (t.trafficLow || 'Low / Smooth') : (t.trafficModerate || 'Moderate')}</div>
+                      </div>
+                      <div style={{ background: '#ffffff', border: '1px solid #dcfce7', padding: '6px 10px', borderRadius: 8 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{t.dailyCapacityThroughput || 'Daily Capacity'}</div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>{topRecommendedMandi.dailyCapacityQuintals} Qtl</div>
+                      </div>
+                    </div>
+
+                    <div className="gmaps-iframe-container" style={{ height: 180, borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+                      <iframe
+                        title="AI Nearest Mandi Live Tracking"
+                        src={`https://maps.google.com/maps?q=${topRecommendedMandi.coords}&z=14&output=embed`}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          minWidth: 160,
+                          background: '#15803d',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '9px 14px',
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${farmerCoords.lat},${farmerCoords.lng}&destination=${topRecommendedMandi.coords}&travelmode=driving`, '_blank')}
+                      >
+                        {t.getBestRoute || 'Get Route in Google Maps'}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          background: '#ffffff',
+                          color: '#15803d',
+                          border: '1.5px solid #15803d',
+                          padding: '9px 14px',
+                          borderRadius: 8,
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => {
+                          setSelectedCentre(topRecommendedMandi.centreId);
+                          setFarmerActiveTab('book');
+                          setWizardStep(1);
+                        }}
+                      >
+                        {t.bookSlotHere || 'Book Slot Here'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1083,14 +1615,7 @@ export default function App() {
                             <button
                               className="lang-selector-btn"
                               style={{ background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', fontWeight: 700, fontSize: '0.75rem' }}
-                              onClick={() => {
-                                setGpsDetecting(true);
-                                setTimeout(() => {
-                                  setGpsDetecting(false);
-                                  setSelectedCentre('PC-AP-KKD-0402');
-                                  setGpsNearestStatus(t.gpsLocatedSuccess || 'GPS Located: Nearest Mandi is Sri Lakshmi Centre (4.2 km away)!');
-                                }, 600);
-                              }}
+                              onClick={requestUserLocation}
                             >
                               {gpsDetecting ? (t.locatingGps || 'Locating via GPS...') : (t.suggestNearest || 'Detect GPS Nearest Mandi')}
                             </button>
@@ -1118,10 +1643,10 @@ export default function App() {
                                   }}
                                   onClick={() => setSelectedCentre(c.centreId)}
                                 >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
                                     <div>
-                                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>{c.name}</div>
-                                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.address} • {c.district}</div>
+                                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>{c.nameLocalized}</div>
+                                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.addressLocalized} • {c.districtLocalized}</div>
                                     </div>
                                     <span style={{
                                       fontSize: '0.7rem',
@@ -1131,12 +1656,13 @@ export default function App() {
                                       background: idx === 0 ? '#15803d' : '#f1f5f9',
                                       color: idx === 0 ? '#ffffff' : '#475569'
                                     }}>
-                                      {idx === 0 ? `RECOMMENDED (${c.distanceKm} km away)` : `${c.distanceKm} km away`}
+                                      {idx === 0 ? `${t.smartRecommended || 'RECOMMENDED'} (${c.distanceKm} ${t.distanceKm || 'km'} • ${c.aiScore}% Match)` : `${c.distanceKm} ${t.distanceKm || 'km away'}`}
                                     </span>
                                   </div>
-                                  <div style={{ fontSize: '0.72rem', color: '#334155', marginTop: 6, display: 'flex', gap: 16 }}>
-                                    <span><strong>Hours:</strong> {c.hours}</span>
-                                    <span><strong>Contact:</strong> {c.contact}</span>
+                                  <div style={{ fontSize: '0.72rem', color: '#334155', marginTop: 6, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                    <span><strong>{t.hours || 'Hours'}:</strong> {c.hours}</span>
+                                    <span><strong>{t.mandiContact || 'Contact'}:</strong> {c.contact}</span>
+                                    <span><strong>{t.estimatedWait || 'Wait'}:</strong> ~{c.avgWaitMins} {t.mins || 'mins'}</span>
                                   </div>
                                 </div>
                               );
@@ -1150,11 +1676,11 @@ export default function App() {
                               <div className="gmaps-tracking-card">
                                 <div className="gmaps-header-bar">
                                   <div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>Map Preview: {currentMandi.name}</div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{currentMandi.address}</div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>{t.mapPreview || 'Map Preview'}: {currentMandi.nameLocalized}</div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{currentMandi.addressLocalized}</div>
                                   </div>
                                   <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 9999, fontWeight: 800 }}>
-                                    ● Google Maps GPS Route ({currentMandi.distanceKm} km)
+                                    {t.liveRouteDirections || 'GPS Route'} ({currentMandi.distanceKm} {t.distanceKm || 'km'})
                                   </span>
                                 </div>
 
@@ -1165,6 +1691,17 @@ export default function App() {
                                     loading="lazy"
                                     referrerPolicy="no-referrer-when-downgrade"
                                   />
+                                </div>
+
+                                <div style={{ marginTop: 10, textAlign: 'right' }}>
+                                  <button
+                                    type="button"
+                                    className="lang-selector-btn"
+                                    style={{ background: '#15803d', color: '#ffffff', borderColor: '#15803d', fontWeight: 700, fontSize: '0.75rem', padding: '6px 14px' }}
+                                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${farmerCoords.lat},${farmerCoords.lng}&destination=${currentMandi.coords}&travelmode=driving`, '_blank')}
+                                  >
+                                    {t.getBestRoute || 'Get Route in Google Maps'}
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -1177,7 +1714,7 @@ export default function App() {
                             style={{ width: 'auto', display: 'inline-flex', padding: '12px 28px' }}
                             onClick={() => setWizardStep(2)}
                           >
-                            {t.nextDateSlot || 'Next: Select Date & Time Slot →'}
+                            {t.nextDateSlot || 'Next: Select Date & Time Slot'}
                           </button>
                         </div>
                       </div>
@@ -1247,38 +1784,157 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* STEP 3: SELECT CROP & QUANTITY */}
+                    {/* STEP 3: SELECT CROP & QUANTITY (ALL CROPS + CUSTOM CROP INPUT) */}
                     {wizardStep === 3 && (
                       <div>
                         <div className="form-group-section">
                           <div className="section-subtitle">{t.step3 || '3. Select Crop & Quantity'}</div>
+
+                          {/* Crop Category Filter Chips */}
+                          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8, marginBottom: 12 }}>
+                            {[
+                              { id: 'ALL', label: t.categoryFilterAll || 'All Crops' },
+                              { id: 'CEREALS', label: t.categoryFilterCereals || 'Cereals' },
+                              { id: 'PULSES', label: t.categoryFilterPulses || 'Pulses' },
+                              { id: 'OILSEEDS', label: t.categoryFilterOilseeds || 'Oilseeds' },
+                              { id: 'CASH', label: t.categoryFilterCash || 'Commercial' },
+                              { id: 'VEGETABLES', label: t.categoryFilterVeg || 'Vegetables' },
+                              { id: 'FRUITS', label: t.categoryFilterFruits || 'Fruits' },
+                              { id: 'SPICES', label: t.categoryFilterSpices || 'Spices' }
+                            ].map((cat) => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                style={{
+                                  padding: '5px 12px',
+                                  borderRadius: 20,
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap',
+                                  border: cropCategoryFilter === cat.id ? '1.5px solid #15803d' : '1px solid #cbd5e1',
+                                  background: cropCategoryFilter === cat.id ? '#dcfce7' : '#ffffff',
+                                  color: cropCategoryFilter === cat.id ? '#15803d' : '#475569',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => setCropCategoryFilter(cat.id)}
+                              >
+                                {cat.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Crop Search Bar */}
+                          <div style={{ marginBottom: 14 }}>
+                            <input
+                              type="text"
+                              className="form-control-custom"
+                              placeholder={lang === 'te' ? '🔍 ఏదైనా పంట పేరును శోధించండి...' : lang === 'hi' ? '🔍 किसी भी फसल का नाम खोजें...' : '🔍 Search any crop name...'}
+                              value={cropSearchQuery}
+                              onChange={(e) => setCropSearchQuery(e.target.value)}
+                              style={{ fontSize: '0.82rem', padding: '9px 12px' }}
+                            />
+                          </div>
+
+                          {/* Crop Dropdown & Custom Crop Trigger */}
                           <div className="form-grid-2">
                             <div>
                               <label className="input-label">{t.selectCrop || 'Crop Type'} *</label>
-                              <select className="form-control-custom" value={selectedCrop} onChange={(e) => setSelectedCrop(e.target.value)}>
-                                {cropsList.map((c) => (
-                                  <option key={c.cropId} value={c.cropId}>{getCropTitle(c.name)} (₹{c.mspRatePerQuintal}/Qtl)</option>
-                                ))}
+                              <select
+                                className="form-control-custom"
+                                value={selectedCrop}
+                                onChange={(e) => setSelectedCrop(e.target.value)}
+                              >
+                                {cropsList
+                                  .filter((c) => {
+                                    const matchesCat = cropCategoryFilter === 'ALL' || c.category === cropCategoryFilter;
+                                    const q = cropSearchQuery.toLowerCase().trim();
+                                    const matchesQ =
+                                      !q ||
+                                      c.name.toLowerCase().includes(q) ||
+                                      (c.nameTe && c.nameTe.includes(q)) ||
+                                      (c.nameHi && c.nameHi.includes(q));
+                                    return matchesCat && matchesQ;
+                                  })
+                                  .map((c) => (
+                                    <option key={c.cropId} value={c.cropId}>
+                                      {getCropTitle(c.name)} {c.isCustom ? '' : `(₹${c.mspRatePerQuintal}/Qtl)`}
+                                    </option>
+                                  ))}
+                                <option value="OTHER_CUSTOM">
+                                  {t.customCropOption || 'Other / Custom Crop (Enter Your Own)'}
+                                </option>
                               </select>
                             </div>
+
                             <div>
                               <label className="input-label">{t.estimatedQty || 'Expected Quantity (Qtl)'} *</label>
-                              <input type="number" className="form-control-custom" value={selectedQty} onChange={(e) => setSelectedQty(Number(e.target.value))} min={1} />
+                              <input
+                                type="number"
+                                className="form-control-custom"
+                                value={selectedQty}
+                                onChange={(e) => setSelectedQty(Math.max(1, Number(e.target.value)))}
+                                min={1}
+                              />
                             </div>
                           </div>
 
+                          {/* Custom Crop Free-Text Input Fields when OTHER_CUSTOM is selected */}
+                          {selectedCrop === 'OTHER_CUSTOM' && (
+                            <div
+                              style={{
+                                background: '#fefce8',
+                                border: '1.5px dashed #ca8a04',
+                                borderRadius: 10,
+                                padding: 14,
+                                marginTop: 14
+                              }}
+                            >
+                              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#854d0e', marginBottom: 8 }}>
+                                {t.customCropOption || 'Custom Crop Details (Any Crop from Earth)'}
+                              </div>
+                              <div className="form-grid-2">
+                                <div>
+                                  <label className="input-label">{t.customCropNameLabel || 'Enter Crop Name'} *</label>
+                                  <input
+                                    type="text"
+                                    className="form-control-custom"
+                                    placeholder={t.customCropPlaceholder || 'e.g. Sesame, Mustard, Millets, Vegetables...'}
+                                    value={customCropName}
+                                    onChange={(e) => setCustomCropName(e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="input-label">{t.customRateLabel || 'Expected Price (₹ / Quintal)'} *</label>
+                                  <input
+                                    type="number"
+                                    className="form-control-custom"
+                                    value={customCropRate}
+                                    onChange={(e) => setCustomCropRate(Math.max(100, Number(e.target.value)))}
+                                    min={100}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Est Payout Calculation Card */}
                           {(() => {
-                            const cObj = cropsList.find(c => c.cropId === selectedCrop) || cropsList[0];
-                            const estPayout = selectedQty * cObj.mspRatePerQuintal;
+                            const isCustom = selectedCrop === 'OTHER_CUSTOM';
+                            const cObj = cropsList.find((c) => c.cropId === selectedCrop) || cropsList[0];
+                            const rate = isCustom ? Number(customCropRate || 2500) : cObj.mspRatePerQuintal;
+                            const estPayout = selectedQty * rate;
+                            const title = isCustom ? (customCropName || 'Custom Crop') : getCropTitle(cObj.name);
+
                             return (
                               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14, marginTop: 14 }}>
-                                <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 700 }}>{t.estMspPayoutDbt || 'ESTIMATED GOVT MSP PAYOUT (DBT)'}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 700 }}>
+                                  {t.estMspPayoutDbt || 'ESTIMATED GOVT MSP PAYOUT (DBT)'}
+                                </div>
                                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#15803d', marginTop: 2 }}>
                                   ₹{estPayout.toLocaleString('en-IN')}
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: '#166534', marginTop: 2 }}>
-                                  {t.basedOnGovtMsp || 'Based on Govt MSP of'} ₹{cObj.mspRatePerQuintal}/Qtl for {selectedQty} {t.quintals || 'Quintals'} of {getCropTitle(cObj.name)}
+                                  {t.basedOnGovtMsp || 'Based on Govt MSP of'} ₹{rate}/Qtl for {selectedQty} {t.quintals || 'Quintals'} of {title}
                                 </div>
                               </div>
                             );
@@ -1286,8 +1942,20 @@ export default function App() {
                         </div>
 
                         <div className="wizard-footer-nav">
-                          <button className="btn-header-secondary" onClick={() => setWizardStep(2)}>{t.backToDateSlot || '← Back to Date & Slot'}</button>
-                          <button className="btn-primary-block" style={{ width: 'auto', padding: '10px 24px' }} onClick={() => setWizardStep(4)}>{t.nextReviewConfirm || 'Next: Review & Confirm →'}</button>
+                          <button className="btn-header-secondary" onClick={() => setWizardStep(2)}>{t.backToDateSlot || 'Back to Date & Slot'}</button>
+                          <button
+                            className="btn-primary-block"
+                            style={{ width: 'auto', padding: '10px 24px' }}
+                            onClick={() => {
+                              if (selectedCrop === 'OTHER_CUSTOM' && !customCropName.trim()) {
+                                alert(lang === 'te' ? 'దయచేసి మీ పంట పేరును నమోదు చేయండి.' : lang === 'hi' ? 'कृपया अपनी फसल का नाम दर्ज करें।' : 'Please enter your crop name.');
+                                return;
+                              }
+                              setWizardStep(4);
+                            }}
+                          >
+                            {t.nextReviewConfirm || 'Next: Review & Confirm'}
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1296,22 +1964,28 @@ export default function App() {
                     {wizardStep === 4 && (
                       <div>
                         <div className="section-subtitle">{t.step4 || '4. Review & Confirm Booking'}</div>
-                        <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 14 }}>{t.reviewInstructions || 'Please review your booking details before generating your official gate pass.'}</p>
+                        <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 14 }}>
+                          {t.reviewInstructions || 'Please review your booking details before generating your official gate pass.'}
+                        </p>
 
                         {(() => {
-                          const mObj = centresList.find(c => c.centreId === selectedCentre) || centresList[0];
-                          const crObj = cropsList.find(c => c.cropId === selectedCrop) || cropsList[0];
-                          const totalPayout = selectedQty * crObj.mspRatePerQuintal;
+                          const mObj = centresList.find((c) => c.centreId === selectedCentre) || centresList[0];
+                          const isCustom = selectedCrop === 'OTHER_CUSTOM';
+                          const crObj = cropsList.find((c) => c.cropId === selectedCrop) || cropsList[0];
+                          const rate = isCustom ? Number(customCropRate || 2500) : crObj.mspRatePerQuintal;
+                          const cropTitle = isCustom ? (customCropName || 'Custom Crop') : getCropTitle(crObj.name);
+                          const totalPayout = selectedQty * rate;
+
                           return (
                             <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 12, padding: 18, marginBottom: 20 }}>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
-                                <div className="detail-item-col"><span className="detail-label">{t.procurementPlace || 'PROCUREMENT PLACE'}</span><span className="detail-val">{mObj.name} ({mObj.distanceKm} {t.distanceKm || 'km away'})</span></div>
+                                <div className="detail-item-col"><span className="detail-label">{t.procurementPlace || 'PROCUREMENT PLACE'}</span><span className="detail-val">{mObj.nameLocalized} ({mObj.distanceKm} {t.distanceKm || 'km away'})</span></div>
                                 <div className="detail-item-col"><span className="detail-label">{t.dateTimeSlot || 'DATE & TIME SLOT'}</span><span className="detail-val">{preferredDate} ({selectedSlotTime})</span></div>
-                                <div className="detail-item-col"><span className="detail-label">{t.cropType || 'CROP TYPE'}</span><span className="detail-val">{getCropTitle(crObj.name)}</span></div>
+                                <div className="detail-item-col"><span className="detail-label">{t.cropType || 'CROP TYPE'}</span><span className="detail-val">{cropTitle}</span></div>
                                 <div className="detail-item-col"><span className="detail-label">{t.expectedQuantity || 'EXPECTED QUANTITY'}</span><span className="detail-val">{selectedQty} {t.quintals || 'Quintals'}</span></div>
                                 <div className="detail-item-col" style={{ gridColumn: 'span 2' }}>
                                   <span className="detail-label">{t.estPayoutDbt || 'ESTIMATED PAYOUT (DIRECT BANK TRANSFER)'}</span>
-                                  <span className="detail-val" style={{ color: '#15803d', fontSize: '1.1rem' }}>₹{totalPayout.toLocaleString('en-IN')} ({t.mspTag || 'Govt MSP'} ₹{crObj.mspRatePerQuintal}/Qtl)</span>
+                                  <span className="detail-val" style={{ color: '#15803d', fontSize: '1.1rem' }}>₹{totalPayout.toLocaleString('en-IN')} ({t.mspTag || 'Govt MSP'} ₹{rate}/Qtl)</span>
                                 </div>
                               </div>
                             </div>
@@ -1319,7 +1993,7 @@ export default function App() {
                         })()}
 
                         <div className="wizard-footer-nav">
-                          <button className="btn-header-secondary" onClick={() => setWizardStep(3)}>{t.backToCrop || '← Back to Crop'}</button>
+                          <button className="btn-header-secondary" onClick={() => setWizardStep(3)}>{t.backToCrop || 'Back to Crop'}</button>
                           <button
                             className="btn-primary-block"
                             style={{ width: 'auto', padding: '12px 28px' }}
@@ -1327,9 +2001,12 @@ export default function App() {
                               setIsBookingSubmitting(true);
                               setTimeout(() => {
                                 setIsBookingSubmitting(false);
-                                const mObj = centresList.find(c => c.centreId === selectedCentre) || centresList[0];
-                                const crObj = cropsList.find(c => c.cropId === selectedCrop) || cropsList[0];
-                                const totalPayout = selectedQty * crObj.mspRatePerQuintal;
+                                const mObj = centresList.find((c) => c.centreId === selectedCentre) || centresList[0];
+                                const isCustom = selectedCrop === 'OTHER_CUSTOM';
+                                const crObj = cropsList.find((c) => c.cropId === selectedCrop) || cropsList[0];
+                                const rate = isCustom ? Number(customCropRate || 2500) : crObj.mspRatePerQuintal;
+                                const cropTitle = isCustom ? (customCropName || 'Custom Crop') : crObj.name;
+                                const totalPayout = selectedQty * rate;
                                 const newTokenId = `PDC-${Math.floor(100000 + Math.random() * 900000)}`;
 
                                 const newBookingObj: ActiveBooking = {
@@ -1339,8 +2016,8 @@ export default function App() {
                                   centreId: mObj.centreId,
                                   centreName: mObj.name,
                                   centreDistrict: mObj.district,
-                                  cropId: crObj.cropId,
-                                  cropName: crObj.name,
+                                  cropId: isCustom ? 'OTHER_CUSTOM' : crObj.cropId,
+                                  cropName: cropTitle,
                                   expectedQuantityQuintals: selectedQty,
                                   bookingDate: preferredDate,
                                   timeWindow: selectedSlotTime,
@@ -1350,12 +2027,33 @@ export default function App() {
                                   farmersAhead: 2,
                                   estimatedWaitMinutes: 15,
                                   estimatedPayout: totalPayout,
-                                  mspRate: crObj.mspRatePerQuintal,
-                                  qrPayload: `APMC|${newTokenId}|${mObj.centreId}|${farmer?.name || 'Farmer'}|${preferredDate}|${selectedSlotTime}|${crObj.name}|${selectedQty}QTL`
+                                  mspRate: rate,
+                                  paymentStatus: 'PENDING',
+                                  qrPayload: `APMC|${newTokenId}|${mObj.centreId}|${farmer?.name || 'Farmer'}|${preferredDate}|${selectedSlotTime}|${cropTitle}|${selectedQty}QTL`
                                 };
 
                                 setActiveBooking(newBookingObj);
                                 setMyBookingsList([newBookingObj, ...myBookingsList]);
+
+                                // Trigger Real-Time SMS on Booking Confirmation
+                                let bookingSms = '';
+                                if (lang === 'te') {
+                                  bookingSms = `డియర్ ${farmer.name}, ${cropTitle} పంట కోసం మీ స్లాట్ బుకింగ్ విజయవంతమైంది. టోకెన్ #${newTokenId}. తేదీ: ${preferredDate}, సమయం: ${selectedSlotTime} వద్ద ${mObj.name}. గేట్ పాస్ QR జనరేట్ చేయబడింది. - భారత ప్రభుత్వం`;
+                                } else if (lang === 'hi') {
+                                  bookingSms = `प्रिय ${farmer.name}, ${cropTitle} की खरीद हेतु आपका स्लॉट बुक हो गया है। टोकन #${newTokenId}, तिथि: ${preferredDate}, समय: ${selectedSlotTime}, केंद्र: ${mObj.name}। गेट पास QR तैयार है। - भारत सरकार`;
+                                } else {
+                                  bookingSms = `Dear ${farmer.name}, your slot for ${cropTitle} has been confirmed. Token #${newTokenId}, Date: ${preferredDate}, Time: ${selectedSlotTime} at ${mObj.name}. Gate Pass QR generated. - Dept of Consumer Affairs, GoI`;
+                                }
+
+                                setActiveSmsAlert({
+                                  id: `SMS-${Date.now()}`,
+                                  sender: 'VD-FARMSOL',
+                                  timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                                  message: bookingSms,
+                                  type: 'BOOKING',
+                                  status: 'PENDING'
+                                });
+
                                 confetti({ particleCount: 90, spread: 80 });
                                 setFarmerActiveTab('token');
                                 setWizardStep(1);
@@ -1432,14 +2130,14 @@ export default function App() {
                             <div className="gmaps-header-bar">
                               <div>
                                 <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a' }}>
-                                  Live Navigation: {bookedMandi.name}
+                                  {t.liveNavigation || 'Live Navigation'}: {bookedMandi.nameLocalized}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                  {bookedMandi.address} ({bookedMandi.distanceKm} km away)
+                                  {bookedMandi.addressLocalized} ({bookedMandi.distanceKm} {t.distanceKm || 'km away'})
                                 </div>
                               </div>
                               <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '3px 8px', borderRadius: 9999, fontWeight: 800 }}>
-                                ● Mandi Gate Route Active
+                                {t.mandiGateRouteActive || 'Mandi Gate Route Active'}
                               </span>
                             </div>
 
@@ -1454,13 +2152,13 @@ export default function App() {
 
                             <div className="gmaps-actions-row">
                               <div style={{ fontSize: '0.75rem', color: '#334155' }}>
-                                Hours: {bookedMandi.hours} • Phone: {bookedMandi.contact}
+                                <strong>{t.hours || 'Hours'}:</strong> {bookedMandi.hours} • <strong>{t.mandiContact || 'Phone'}:</strong> {bookedMandi.contact}
                               </div>
                               <button
                                 type="button"
                                 className="lang-selector-btn"
                                 style={{ background: '#15803d', color: '#ffffff', borderColor: '#15803d', fontWeight: 700, fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                                onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=16.9800,82.2400&destination=${bookedMandi.coords}&travelmode=driving`, '_blank')}
+                                onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${farmerCoords.lat},${farmerCoords.lng}&destination=${bookedMandi.coords}&travelmode=driving`, '_blank')}
                               >
                                 {t.googleMapsDirections || 'Navigate to Mandi on Google Maps'}
                               </button>
@@ -1480,22 +2178,35 @@ export default function App() {
                     <div>
                       <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{t.centresTitle || 'APMC Government Procurement Centres'}</h3>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        Live Google Maps integration, distance metrics, and turn-by-turn driving directions to nearby APMC mandis.
+                        {t.centresSub || 'Live Google Maps integration, distance metrics, and turn-by-turn driving directions to nearby APMC mandis.'}
                       </p>
                     </div>
                     <button
                       className="lang-selector-btn"
                       style={{ background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', fontWeight: 700, fontSize: '0.78rem' }}
-                      onClick={() => {
-                        setGpsDetecting(true);
-                        setTimeout(() => {
-                          setGpsDetecting(false);
-                          setGpsNearestStatus(t.gpsLocatedSuccess || 'GPS Located: Recommended Sri Lakshmi APMC Centre (4.2 km away)!');
-                        }, 500);
-                      }}
+                      onClick={requestUserLocation}
                     >
                       {gpsDetecting ? (t.locatingGps || 'Locating via GPS...') : (t.suggestNearest || 'Detect GPS Nearest Mandi')}
                     </button>
+                  </div>
+
+                  {/* AI/ML Top Recommendation Callout */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                    border: '2px solid #86efac',
+                    borderRadius: 12,
+                    padding: '14px 16px',
+                    marginBottom: 16
+                  }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#15803d', textTransform: 'uppercase', marginBottom: 2 }}>
+                      {t.yourNearestMandiTitle || 'Your Nearest MANDI / OPERATOR Places are:'}
+                    </div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>
+                      {topRecommendedMandi.nameLocalized} ({topRecommendedMandi.distanceKm} {t.distanceKm || 'km away'} - {topRecommendedMandi.aiScore}% AI Match)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 2 }}>
+                      {topRecommendedMandi.addressLocalized} • {topRecommendedMandi.districtLocalized}
+                    </div>
                   </div>
 
                   {gpsNearestStatus && (
@@ -1505,15 +2216,23 @@ export default function App() {
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {centresList.map((c) => (
+                    {centresList.map((c, idx) => (
                       <div key={c.centreId} className="gmaps-tracking-card" style={{ marginTop: 0 }}>
                         <div className="gmaps-header-bar">
                           <div>
-                            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>{c.name}</div>
-                            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{c.address} • {c.district}</div>
+                            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>{c.nameLocalized}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{c.addressLocalized} • {c.districtLocalized}</div>
                           </div>
-                          <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: 9999, fontWeight: 800 }}>
-                            ● {c.distanceKm} {t.distanceKm || 'km away'}
+                          <span style={{
+                            fontSize: '0.72rem',
+                            background: idx === 0 ? '#15803d' : '#dcfce7',
+                            color: idx === 0 ? '#ffffff' : '#15803d',
+                            border: '1px solid #bbf7d0',
+                            padding: '4px 10px',
+                            borderRadius: 9999,
+                            fontWeight: 800
+                          }}>
+                            {idx === 0 ? `${t.smartRecommended || 'RECOMMENDED'} (${c.distanceKm} ${t.distanceKm || 'km'})` : `${c.distanceKm} ${t.distanceKm || 'km away'}`}
                           </span>
                         </div>
 
@@ -1528,16 +2247,16 @@ export default function App() {
 
                         <div className="gmaps-actions-row" style={{ flexWrap: 'wrap' }}>
                           <div style={{ fontSize: '0.78rem', color: '#334155' }}>
-                            <strong style={{ color: '#0f172a' }}>Hours:</strong> {c.hours} • <strong style={{ color: '#0f172a' }}>Contact:</strong> {c.contact}
+                            <strong style={{ color: '#0f172a' }}>{t.hours || 'Hours'}:</strong> {c.hours} • <strong style={{ color: '#0f172a' }}>{t.mandiContact || 'Contact'}:</strong> {c.contact} • <strong>{t.estimatedWait || 'Wait'}:</strong> ~{c.avgWaitMins} {t.mins || 'mins'}
                           </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               type="button"
                               className="lang-selector-btn"
                               style={{ background: '#15803d', color: '#ffffff', borderColor: '#15803d', fontWeight: 700, fontSize: '0.75rem', padding: '6px 14px' }}
-                              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=16.9800,82.2400&destination=${c.coords}&travelmode=driving`, '_blank')}
+                              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${farmerCoords.lat},${farmerCoords.lng}&destination=${c.coords}&travelmode=driving`, '_blank')}
                             >
-                              {t.googleMapsDirections || 'Live Directions'}
+                              {t.getBestRoute || 'Live Directions'}
                             </button>
                             <button
                               type="button"
@@ -1549,7 +2268,7 @@ export default function App() {
                                 setWizardStep(1);
                               }}
                             >
-                              Book Slot Here →
+                              {t.bookSlotHere || 'Book Slot Here'}
                             </button>
                           </div>
                         </div>
@@ -1638,19 +2357,133 @@ export default function App() {
                 </div>
               )}
 
-              {/* PAYMENTS */}
+              {/* PAYMENTS & DBT PASSBOOK */}
               {farmerActiveTab === 'payments' && (
                 <div className="section-card" style={{ maxWidth: 840, margin: '0 auto' }}>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 16 }}>{t.paymentTransactions || 'Payment Transactions (DBT)'}</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{t.paymentTransactions || 'Payment Transactions (DBT)'}</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {t.accountDetails || 'Direct Benefit Transfer (DBT) linked to Aadhaar Bank Account'}
+                      </p>
+                    </div>
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', color: '#047857', fontWeight: 700 }}>
+                      🏦 {bankDetails.bankName} (****{bankDetails.accountNumber.slice(-4)})
+                    </div>
+                  </div>
+
+                  {/* ACTIVE BOOKING PAYMENT SETTLEMENT STATUS CARD */}
+                  {activeBooking && (
+                    <div
+                      style={{
+                        background: activeBooking.paymentStatus === 'COMPLETED' ? '#f0fdf4' : '#fffbeb',
+                        border: `1.5px solid ${activeBooking.paymentStatus === 'COMPLETED' ? '#86efac' : '#fcd34d'}`,
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 20
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>
+                            {t.token || 'TOKEN'}: {activeBooking.tokenId}
+                          </span>
+                          <span
+                            style={{
+                              background: activeBooking.paymentStatus === 'COMPLETED' ? '#16a34a' : '#d97706',
+                              color: '#ffffff',
+                              padding: '2px 10px',
+                              borderRadius: 20,
+                              fontSize: '0.72rem',
+                              fontWeight: 800
+                            }}
+                          >
+                            ● {activeBooking.paymentStatus === 'COMPLETED' ? (t.paymentCompleted || 'COMPLETED') : (t.paymentPending || 'PENDING')}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {activeBooking.paymentTimestamp || activeBooking.bookingDate}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>{t.amountSettled || 'AMOUNT / NET PAYOUT'}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: activeBooking.paymentStatus === 'COMPLETED' ? '#15803d' : '#b45309', marginTop: 2 }}>
+                            ₹{(activeBooking.paymentAmount || activeBooking.estimatedPayout).toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: 4 }}>
+                            {getCropTitle(activeBooking.cropName)} • {activeBooking.expectedQuantityQuintals} {t.quintals || 'Qtl'}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>{t.paymentRefLabel || 'BANK UTR / TXN REF'}</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', fontFamily: 'monospace', marginTop: 4 }}>
+                            {activeBooking.paymentUtr || 'Awaiting Mandi Desk Release'}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
+                            {t.paymentModeLabel || 'Mode'}: {activeBooking.paymentMode || 'Direct Benefit Transfer (DBT)'}
+                          </div>
+                        </div>
+
+                        {/* Digital Payment Receipt QR */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                          <QRCodeCanvas
+                            value={JSON.stringify({
+                              type: 'DBT_PAYMENT_RECEIPT',
+                              token: activeBooking.tokenId,
+                              farmer: farmer.name,
+                              amount: activeBooking.paymentAmount || activeBooking.estimatedPayout,
+                              status: activeBooking.paymentStatus || 'PENDING',
+                              utr: activeBooking.paymentUtr || 'PENDING',
+                              date: activeBooking.bookingDate
+                            })}
+                            size={72}
+                          />
+                          <span style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 700, marginTop: 4 }}>
+                            {t.paymentQrTitle || 'DBT Receipt QR'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <table className="data-table">
-                    <thead><tr><th>{t.receiptNo || 'RECEIPT #'}</th><th>{t.date || 'DATE'}</th><th>{t.crop || 'CROP'}</th><th>{t.weight || 'WEIGHT'}</th><th>{t.rate || 'RATE'}</th><th>{t.total || 'TOTAL'}</th><th>{t.status || 'STATUS'}</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>{t.receiptNo || 'RECEIPT #'}</th>
+                        <th>{t.date || 'DATE'}</th>
+                        <th>{t.crop || 'CROP'}</th>
+                        <th>{t.weight || 'WEIGHT'}</th>
+                        <th>{t.rate || 'RATE'}</th>
+                        <th>{t.total || 'TOTAL'}</th>
+                        <th>{t.status || 'STATUS'}</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {recentProcurements.map((p, i) => (
                         <tr key={i}>
                           <td style={{ fontWeight: 800 }}>{p.procurementId}</td>
-                          <td>{p.date}</td><td>{getCropTitle(p.crop)}</td><td>{p.netWeightQuintals} {t.quintals || 'Qtl'}</td><td>₹{p.ratePerQuintal}{t.perQuintal || '/Qtl'}</td>
+                          <td>{p.date}</td>
+                          <td>{getCropTitle(p.crop)}</td>
+                          <td>{p.netWeightQuintals} {t.quintals || 'Qtl'}</td>
+                          <td>₹{p.ratePerQuintal}{t.perQuintal || '/Qtl'}</td>
                           <td style={{ fontWeight: 800, color: 'var(--primary)' }}>₹{p.totalAmount.toLocaleString('en-IN')}</td>
-                          <td><span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 700 }}>{t.transferred || 'Transferred'}</span></td>
+                          <td>
+                            <span
+                              style={{
+                                background: p.paymentStatus === 'PENDING' ? '#fef3c7' : '#dcfce7',
+                                color: p.paymentStatus === 'PENDING' ? '#b45309' : '#15803d',
+                                padding: '3px 8px',
+                                borderRadius: 9999,
+                                fontSize: '0.72rem',
+                                fontWeight: 700
+                              }}
+                            >
+                              {p.paymentStatus === 'PENDING' ? (t.paymentPending || 'Pending') : (t.transferred || 'Transferred')}
+                            </span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FarmSolLogo } from './components/FarmSolLogo';
+import { io } from 'socket.io-client';
 
 const API_BASE = 'http://localhost:5000/api/v1';
 
@@ -76,6 +77,47 @@ export default function App() {
     { id: 'AUD-900', action: 'GATE_ENTRY_CHECKIN', user: 'Operator APMC-54031', details: 'Scanned digital QR Gate Pass for Token PDC-774321', time: '45 mins ago' },
     { id: 'AUD-899', action: 'OPERATOR_APPROVED', user: 'Admin SA-01', details: 'Approved credentials for Operator Sai Kumar (APMC-54031)', time: '2 hours ago' }
   ]);
+
+  useEffect(() => {
+    let socket: any = null;
+    try {
+      socket = io('http://localhost:5000', { transports: ['websocket', 'polling'] });
+      socket.on('connect', () => {
+        socket.emit('join:admin');
+      });
+      socket.on('payment:update', (data: any) => {
+        setAuditLogs((prev) => [
+          {
+            id: `AUD-${Date.now().toString().slice(-4)}`,
+            action: data.status === 'COMPLETED' ? 'DBT_PAYMENT_DISBURSED' : 'PAYMENT_PENDING_REVIEW',
+            user: `Operator (${data.operatorId || 'APMC-54031'})`,
+            details: `₹${(data.amount || 103500).toLocaleString('en-IN')} ${data.status === 'COMPLETED' ? 'disbursed via DBT' : 'marked pending'} for Token #${data.tokenId || 'PDC-774321'}. UTR: ${data.utr || 'UTR' + Date.now()}`,
+            time: 'Just now'
+          },
+          ...prev
+        ]);
+      });
+      socket.on('queue:update', (data: any) => {
+        if (data.stage === 'GATE_ENTRY' || data.stage === 'COMPLETED') {
+          setAuditLogs((prev) => [
+            {
+              id: `AUD-${Date.now().toString().slice(-4)}`,
+              action: data.stage === 'GATE_ENTRY' ? 'GATE_ENTRY_CHECKIN' : 'PROCUREMENT_COMPLETED',
+              user: `Operator (${data.centreId || 'CTR-402'})`,
+              details: `Token #${data.tokenId || 'PDC-774321'} moved to stage ${data.stage}`,
+              time: 'Just now'
+            },
+            ...prev
+          ]);
+        }
+      });
+    } catch (e) {
+      console.warn('Admin socket connect error:', e);
+    }
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []);
 
   const handleLoginSubmit = () => {
     setAuthLoading(true);

@@ -13,6 +13,7 @@ import { QueueService } from '../services/queue.service';
 import { QRService } from '../services/qr.service';
 import { AuditService } from '../services/audit.service';
 import { NotificationService } from '../services/notification.service';
+import { getIO } from '../config/socket';
 import {
   BookingStatus,
   QueueStage,
@@ -340,5 +341,116 @@ export class OperatorController {
     );
 
     return res.status(200).json({ success: true, data: enriched });
+  }
+
+  /**
+   * Settle Farmer Payment (Mark COMPLETED or PENDING) with Real-Time Socket & SMS
+   */
+  public static async settlePayment(req: AuthenticatedRequest, res: Response) {
+    const { bookingId, paymentStatus, paymentMode = 'DBT_DIRECT', notes, utrCustom } = req.body;
+    const operatorId = req.user?.userId || 'OP-001';
+
+    const booking = await BookingModel.findOne({ bookingId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    let payment = await PaymentModel.findOne({ bookingId: booking.bookingId });
+    const isCompleted = paymentStatus === 'COMPLETED';
+    const targetStatus = isCompleted ? PaymentStatus.COMPLETED : PaymentStatus.PENDING;
+    const utrRef = utrCustom || `UTR${Date.now()}`;
+
+    if (!payment) {
+      const weighing = await WeighingRecordModel.findOne({ bookingId: booking.bookingId });
+      const rateDoc = await RateModel.findOne({ cropId: booking.cropId }).sort({ effectiveFrom: -1 });
+      const rate = rateDoc?.ratePerQuintal || 2300;
+      const netQty = weighing?.netWeightQuintals || booking.expectedQuantityQuintals || 45;
+      const amountINR = Math.round(netQty * rate);
+
+      payment = await PaymentModel.create({
+        paymentId: IdGenerator.generatePaymentId(),
+        procurementId: `PRC-${Date.now()}`,
+        farmerId: booking.farmerId,
+        amountINR,
+        status: targetStatus,
+        bankAccountRef: 'XXXX-XXXX-5512',
+        ifscCode: 'SBIN0001234',
+        utrReference: utrRef
+      });
+    } else {
+      payment.status = targetStatus;
+      payment.utrReference = utrRef;
+      payment.updatedAt = new Date();
+      await payment.save();
+    }
+
+    // Socket.IO real-time emission to Farmer, Mandi, and Central Admin
+    try {
+      const io = getIO();
+      const payload = {
+        bookingId: booking.bookingId,
+        tokenId: booking.tokenId,
+        farmerId: booking.farmerId,
+        centreId: booking.centreId,
+        amount: payment.amountINR,
+        status: payment.status,
+        utr: payment.utrReference,
+        timestamp: new Date().toISOString(),
+        paymentMode,
+        notes
+      };
+
+      io.to(`farmer:${booking.farmerId}`).emit('payment:update', payload);
+      io.to(`centre:${booking.centreId}`).emit('payment:update', payload);
+      io.to('admin:dashboard').emit('payment:update', payload);
+      io.emit('payment:update', payload);
+
+      // Real-Time Telecom SMS Delivery
+      const smsMessage = isCompleted
+        ? `Dear Farmer, payment of Rs.${payment.amountINR.toLocaleString('en-IN')} for Token #${booking.tokenId} has been COMPLETED and credited via DBT. UTR: ${payment.utrReference}. - DoCA, Govt of India`
+        : `Dear Farmer, payment of Rs.${payment.amountINR.toLocaleString('en-IN')} for Token #${booking.tokenId} is marked PENDING. Verification at Mandi Desk. - DoCA, Govt of India`;
+
+      await NotificationService.sendSmsFallback(booking.farmerId, smsMessage);
+
+      io.to(`farmer:${booking.farmerId}`).emit('sms:notification', {
+        farmerId: booking.farmerId,
+        sender: 'VD-FARMSOL',
+        message: smsMessage,
+        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        type: 'PAYMENT',
+        status: payment.status
+      });
+      io.emit('sms:notification', {
+        farmerId: booking.farmerId,
+        sender: 'VD-FARMSOL',
+        message: smsMessage,
+        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        type: 'PAYMENT',
+        status: payment.status
+      });
+    } catch (err) {
+      console.warn('[OperatorController] Socket notification error:', err);
+    }
+
+    // Audit Log Stamping
+    await AuditService.recordLog({
+      actorId: operatorId,
+      actorName: req.user?.name || 'Mandi Cashier / Officer',
+      role: UserRole.OPERATOR,
+      action: isCompleted ? 'PAYMENT_COMPLETED' : 'PAYMENT_PENDING',
+      entity: 'Payment',
+      entityId: payment.paymentId,
+      centreId: booking.centreId,
+      changes: { after: { status: targetStatus, amount: payment.amountINR, utr: payment.utrReference } }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Payment status updated to ${targetStatus}`,
+      data: {
+        payment,
+        booking
+      }
+    });
   }
 }

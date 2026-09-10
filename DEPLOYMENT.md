@@ -13,7 +13,7 @@ In production, local development ports (`3001`, `3010`, `3020`, `5000`) are repl
 graph TD
     subgraph Mobile_Store["📱 Mobile App Stores"]
         AndroidAPK["Google Play Store (Android APK)"]
-        iOSApp["Apple App Store (iOS IPA)"]
+        iOSApp["Apple App Store (iOS IPA)"]+
     end
 
     subgraph Production_Web_Domains["🌐 Production HTTPS Subdomains"]
