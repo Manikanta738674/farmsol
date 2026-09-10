@@ -16,6 +16,7 @@ graph TD
         iOSApp["Apple App Store (iOS IPA)"]+
     end
 
+
     subgraph Production_Web_Domains["🌐 Production HTTPS Subdomains"]
         FarmerPWA["🌾 kisan.smartprocure.gov.in\n(Farmer Web App & PWA)"]
         OperatorWeb["👷 mandi.smartprocure.gov.in\n(APMC Mandi Operator Desk)"]
