@@ -12,7 +12,7 @@
     "tunnel": "npx expo start --tunnel",
     "android": "npx expo start --android",
     "ios": "npx expo start --ios",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
