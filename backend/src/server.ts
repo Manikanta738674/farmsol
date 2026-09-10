@@ -2,6 +2,7 @@ import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import { ENV } from './config/environment';
 import { connectDatabase } from './config/database';
 import { initSocket } from './config/socket';
@@ -22,7 +23,7 @@ const server = http.createServer(app);
 initSocket(server, ENV.CORS_ORIGIN);
 
 // Global Middlewares
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (ENV.NODE_ENV !== 'test') {
@@ -31,15 +32,23 @@ if (ENV.NODE_ENV !== 'test') {
 
 // Health Check
 app.get('/api/health', (req, res) => {
+  const dbStates = ['Disconnected', 'Connected', 'Connecting', 'Disconnecting'];
+  const dbStatus = dbStates[mongoose.connection.readyState] || 'Unknown';
   res.status(200).json({
     status: 'HEALTHY',
     service: 'Smart Agricultural Procurement Platform API',
     department: 'Department of Consumer Affairs (DoCA)',
+    database: dbStatus,
     timestamp: new Date().toISOString()
   });
 });
 
+import { persistentStore } from './services/persistentStore';
+
 // API Routes
+app.get('/api/v1/centres', (req, res) => {
+  res.json({ success: true, data: persistentStore.getCollection('centres') });
+});
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/farmer', farmerRoutes);
 app.use('/api/v1/bookings', bookingRoutes);

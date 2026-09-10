@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "SIH26032 Smart Agricultural Procurement Platform - Ministry of Consumer Affairs, Food & Public Distribution",
   "private": true,
+  "main": "node_modules/expo/AppEntry.js",
   "workspaces": [
     "shared",
     "backend",
@@ -11,8 +12,9 @@
     "frontend-admin"
   ],
   "scripts": {
-    "start": "npm --prefix frontend-farmer run web",
-    "dev": "npm --prefix frontend-farmer run web",
+    "start": "npx concurrently -k -n \"BACKEND,FARMER,OPERATOR,ADMIN\" -c \"blue,green,magenta,cyan\" \"npm --prefix backend run dev\" \"npm --prefix frontend-farmer run web\" \"npm --prefix frontend-operator run dev\" \"npm --prefix frontend-admin run dev\"",
+    "dev": "npx concurrently -k -n \"BACKEND,FARMER,OPERATOR,ADMIN\" -c \"blue,green,magenta,cyan\" \"npm --prefix backend run dev\" \"npm --prefix frontend-farmer run web\" \"npm --prefix frontend-operator run dev\" \"npm --prefix frontend-admin run dev\"",
+    "dev:all": "npx concurrently -k -n \"BACKEND,FARMER,OPERATOR,ADMIN\" -c \"blue,green,magenta,cyan\" \"npm --prefix backend run dev\" \"npm --prefix frontend-farmer run web\" \"npm --prefix frontend-operator run dev\" \"npm --prefix frontend-admin run dev\"",
     "dev:expo": "npm --prefix frontend-farmer run start",
     "dev:backend": "npm --prefix backend run dev",
     "dev:farmer": "npm --prefix frontend-farmer run web",
@@ -20,9 +22,10 @@
     "dev:operator": "npm --prefix frontend-operator run dev",
     "dev:admin": "npm --prefix frontend-admin run dev",
     "seed": "npm --prefix backend run seed",
-    "build:farmer": "npm --prefix frontend-farmer run build",
     "build": "npm --prefix frontend-farmer run build",
-    "build:all": "npm --prefix shared run build && npm --prefix backend run build && npm --prefix frontend-farmer run build && npm --prefix frontend-operator run build && npm --prefix frontend-admin run build"
+    "build:all": "npm --prefix shared run build && npm --prefix backend run build && npm --prefix frontend-farmer run build && npm --prefix frontend-operator run build && npm --prefix frontend-admin run build",
+    "build:backend": "npm --prefix backend run build",
+    "start:backend": "npm --prefix backend run start"
   },
   "keywords": [
     "agriculture",
@@ -40,6 +43,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "concurrently": "^8.2.2",
     "typescript": "~6.0.3"
   }
 }

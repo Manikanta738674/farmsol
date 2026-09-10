@@ -4,12 +4,12 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "npm --prefix shared install && npm --prefix shared run build && tsc",
     "start": "node dist/server.js",
     "seed": "ts-node-dev --transpile-only src/seeds/seed.ts"
   },
   "dependencies": {
-    "@smartfarmer/shared": "file:../shared",
+    "@smartfarmer/shared": "file:./shared",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

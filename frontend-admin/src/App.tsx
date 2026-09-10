@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { FarmSolLogo } from './components/FarmSolLogo';
 import { io } from 'socket.io-client';
+import { realtimeSync } from './utils/realtimeSync';
+import { persistentRepo } from './utils/persistentRepo';
 
 const API_BASE = 'http://localhost:5000/api/v1';
 
 export default function App() {
   // Auth & RBAC State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('auth') === 'true') return true;
+      if (params.get('logout') === 'true') return false;
+      return !!persistentRepo.getAdmin();
+    }
+    return false;
+  });
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
-  const [emailInput, setEmailInput] = useState<string>('pardhupavan459@gmail.com');
+  const [emailInput, setEmailInput] = useState<string>(() => {
+    const ad = persistentRepo.getAdmin();
+    if (ad && ad.email) return ad.email;
+    return 'pardhupavan459@gmail.com';
+  });
   const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
 
   // Admin Workspace Tabs & Search
@@ -30,25 +44,35 @@ export default function App() {
   const [newCentreCapacity, setNewCentreCapacity] = useState<number>(1500);
 
   // Data Collections
-  const [operatorsList, setOperatorsList] = useState<any[]>([
-    { id: 'APMC-54031', name: 'Sai Kumar', email: 'saikumar448470@gmail.com', centre: 'AMC Guntur (#402)', verified: 'Verified', status: 'Approved' },
-    { id: 'APMC-0342', name: 'Pavan Surya', email: 'pavansurya9902@gmail.com', centre: 'AMC Tenali (#108)', verified: 'Verified', status: 'Approved' },
-    { id: 'OP-103', name: 'R. K. Verma', email: 'operator.guntur@apmc.gov.in', centre: 'Godavari Mandi (#201)', verified: 'Unverified', status: 'Pending Approval' },
-    { id: 'OP-102', name: 'M. Sridhar', email: 'operator.tenali@apmc.gov.in', centre: 'AMC Tenali (#108)', verified: 'Verified', status: 'Approved' },
-    { id: 'OP-101', name: 'V. Naidu', email: 'operator.vizianagaram@apmc.gov.in', centre: 'Vizianagaram (#012)', verified: 'Unverified', status: 'Pending Approval' }
-  ]);
+  const [operatorsList, setOperatorsList] = useState<any[]>(() => {
+    const saved = persistentRepo.getOperators();
+    if (saved && saved.length > 0) return saved;
+    return [
+      { id: 'APMC-54031', name: 'Sai Kumar', email: 'saikumar448470@gmail.com', centre: 'AMC Guntur (#402)', verified: 'Verified', status: 'Approved' },
+      { id: 'APMC-0342', name: 'Pavan Surya', email: 'pavansurya9902@gmail.com', centre: 'AMC Tenali (#108)', verified: 'Verified', status: 'Approved' },
+      { id: 'OP-103', name: 'R. K. Verma', email: 'operator.guntur@apmc.gov.in', centre: 'Godavari Mandi (#201)', verified: 'Unverified', status: 'Pending Approval' },
+      { id: 'OP-102', name: 'M. Sridhar', email: 'operator.tenali@apmc.gov.in', centre: 'AMC Tenali (#108)', verified: 'Verified', status: 'Approved' },
+      { id: 'OP-101', name: 'V. Naidu', email: 'operator.vizianagaram@apmc.gov.in', centre: 'Vizianagaram (#012)', verified: 'Unverified', status: 'Pending Approval' }
+    ];
+  });
 
-  const [centresList, setCentresList] = useState<any[]>([
-    { id: 'CTR-402', name: 'AMC Guntur Central', district: 'Guntur, AP', dailyQuota: 1200, activeWeighbridges: 3, operators: 4, status: 'Active' },
-    { id: 'CTR-108', name: 'AMC Tenali Mandi', district: 'Guntur, AP', dailyQuota: 800, activeWeighbridges: 2, operators: 3, status: 'Active' },
-    { id: 'CTR-201', name: 'Godavari Agricultural Market', district: 'East Godavari, AP', dailyQuota: 2000, activeWeighbridges: 5, operators: 6, status: 'Active' },
-    { id: 'CTR-012', name: 'Vizianagaram Regulated Market', district: 'Vizianagaram, AP', dailyQuota: 1000, activeWeighbridges: 2, operators: 2, status: 'Active' }
-  ]);
+  const [centresList, setCentresList] = useState<any[]>(() => {
+    const saved = persistentRepo.getCentres();
+    if (saved && saved.length > 0) return saved;
+    return [
+      { id: 'CTR-402', name: 'AMC Guntur Central', district: 'Guntur, AP', dailyQuota: 1200, activeWeighbridges: 3, operators: 4, status: 'Active' },
+      { id: 'CTR-108', name: 'AMC Tenali Mandi', district: 'Guntur, AP', dailyQuota: 800, activeWeighbridges: 2, operators: 3, status: 'Active' },
+      { id: 'CTR-201', name: 'Godavari Agricultural Market', district: 'East Godavari, AP', dailyQuota: 2000, activeWeighbridges: 5, operators: 6, status: 'Active' },
+      { id: 'CTR-012', name: 'Vizianagaram Regulated Market', district: 'Vizianagaram, AP', dailyQuota: 1000, activeWeighbridges: 2, operators: 2, status: 'Active' }
+    ];
+  });
 
   const [cropsList, setCropsList] = useState<any[]>(() => {
-    const saved = localStorage.getItem('smartfarmer_crop_rates');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+    const saved = persistentRepo.getCrops();
+    if (saved && saved.length > 0) return saved;
+    const ls = localStorage.getItem('smartfarmer_crop_rates');
+    if (ls) {
+      try { return JSON.parse(ls); } catch (e) {}
     }
     return [
       { id: 'CR-PADDY-GRADE-A', name: 'Paddy (Grade A)', msp: 2300, marketPrice: 2380, season: 'Kharif 2026', totalProcured: 1450, moistureLimit: '≤ 17.0%', lastUpdated: 'Just Now' },
@@ -70,15 +94,46 @@ export default function App() {
     { id: 'FMR-22', name: 'B. Satyanarayana', mobile: '+91 9989023456', state: 'Andhra Pradesh', aadhaar: 'Verified', bank: 'SBI (A/C: ****1188)', totalSold: 150, dbtPaid: '₹3,41,250' }
   ]);
 
-  const [auditLogs, setAuditLogs] = useState<any[]>([
-    { id: 'AUD-903', action: 'DBT_PAYMENT_DISBURSED', user: 'DoCA Gateway', details: '₹1,84,000 transferred to Farmer M. Venkata Reddy for Token PDC-110294', time: '5 mins ago' },
-    { id: 'AUD-902', action: 'WEIGHBRIDGE_RECORDED', user: 'Operator APMC-54031', details: 'Net Weight: 45.00 Qtl recorded at Centre #402', time: '12 mins ago' },
-    { id: 'AUD-901', action: 'SLOT_RESCHEDULED', user: 'Farmer FMR-19', details: 'Rescheduled slot to 02 Sep (Reason: Heavy Rain)', time: '28 mins ago' },
-    { id: 'AUD-900', action: 'GATE_ENTRY_CHECKIN', user: 'Operator APMC-54031', details: 'Scanned digital QR Gate Pass for Token PDC-774321', time: '45 mins ago' },
-    { id: 'AUD-899', action: 'OPERATOR_APPROVED', user: 'Admin SA-01', details: 'Approved credentials for Operator Sai Kumar (APMC-54031)', time: '2 hours ago' }
-  ]);
+  const [auditLogs, setAuditLogs] = useState<any[]>(() => {
+    const saved = persistentRepo.getAuditLogs();
+    if (saved && saved.length > 0) return saved;
+    return [
+      { id: 'AUD-903', action: 'DBT_PAYMENT_DISBURSED', user: 'DoCA Gateway', details: '₹1,84,000 transferred to Farmer M. Venkata Reddy for Token PDC-110294', time: '5 mins ago' },
+      { id: 'AUD-902', action: 'WEIGHBRIDGE_RECORDED', user: 'Operator APMC-54031', details: 'Net Weight: 45.00 Qtl recorded at Centre #402', time: '12 mins ago' },
+      { id: 'AUD-901', action: 'SLOT_RESCHEDULED', user: 'Farmer FMR-19', details: 'Rescheduled slot to 02 Sep (Reason: Heavy Rain)', time: '28 mins ago' },
+      { id: 'AUD-900', action: 'GATE_ENTRY_CHECKIN', user: 'Operator APMC-54031', details: 'Scanned digital QR Gate Pass for Token PDC-774321', time: '45 mins ago' },
+      { id: 'AUD-899', action: 'OPERATOR_APPROVED', user: 'Admin SA-01', details: 'Approved credentials for Operator Sai Kumar (APMC-54031)', time: '2 hours ago' }
+    ];
+  });
 
   useEffect(() => {
+    realtimeSync.setPortal('admin');
+    const unsubPayment = realtimeSync.subscribe('payment:update', (data: any) => {
+      setAuditLogs((prev) => [
+        {
+          id: `AUD-${Date.now().toString().slice(-4)}`,
+          action: data.status === 'COMPLETED' ? 'DBT_PAYMENT_DISBURSED' : 'PAYMENT_PENDING_REVIEW',
+          user: `Operator (${data.operatorId || 'APMC-54031'})`,
+          details: `₹${(data.amount || 103500).toLocaleString('en-IN')} ${data.status === 'COMPLETED' ? 'disbursed via DBT' : 'marked pending'} for Token #${data.tokenId || 'PDC-774321'}. UTR: ${data.utr || 'UTR' + Date.now()}`,
+          time: 'Just now'
+        },
+        ...prev
+      ]);
+    });
+
+    const unsubQueue = realtimeSync.subscribe('queue:update', (data: any) => {
+      setAuditLogs((prev) => [
+        {
+          id: `AUD-${Date.now().toString().slice(-4)}`,
+          action: data.currentStage === 'GATE_ENTRY' ? 'GATE_ENTRY_CHECKIN' : data.currentStage === 'WEIGHING' ? 'WEIGHBRIDGE_RECORDED' : 'QUEUE_ADVANCED',
+          user: `Operator (${data.centreId || 'CTR-402'})`,
+          details: `Token #${data.tokenId || 'PDC-774321'} advanced to stage ${data.currentStage || data.stage || 'PROCESSING'}`,
+          time: 'Just now'
+        },
+        ...prev
+      ]);
+    });
+
     let socket: any = null;
     try {
       socket = io('http://localhost:5000', { transports: ['websocket', 'polling'] });
@@ -115,15 +170,44 @@ export default function App() {
       console.warn('Admin socket connect error:', e);
     }
     return () => {
+      unsubPayment();
+      unsubQueue();
       if (socket) socket.disconnect();
     };
   }, []);
+
+  // Synchronize state with persistent repo
+  useEffect(() => {
+    if (operatorsList && operatorsList.length > 0) {
+      persistentRepo.saveOperators(operatorsList);
+    }
+  }, [operatorsList]);
+
+  useEffect(() => {
+    if (centresList && centresList.length > 0) {
+      persistentRepo.saveCentres(centresList);
+    }
+  }, [centresList]);
+
+  useEffect(() => {
+    if (cropsList && cropsList.length > 0) {
+      persistentRepo.saveCrops(cropsList);
+      localStorage.setItem('smartfarmer_crop_rates', JSON.stringify(cropsList));
+    }
+  }, [cropsList]);
+
+  useEffect(() => {
+    if (auditLogs && auditLogs.length > 0) {
+      persistentRepo.saveAuditLogs(auditLogs);
+    }
+  }, [auditLogs]);
 
   const handleLoginSubmit = () => {
     setAuthLoading(true);
     setTimeout(() => {
       setAuthLoading(false);
       setIsAuthenticated(true);
+      persistentRepo.saveAdmin({ email: emailInput, role: 'admin', name: 'DoCA Central Administrator' });
     }, 400);
   };
 
@@ -160,6 +244,7 @@ export default function App() {
     });
     setCropsList(updated);
     localStorage.setItem('smartfarmer_crop_rates', JSON.stringify(updated));
+    realtimeSync.broadcast('msp:update', updated);
     setEditingCrop(null);
     alert(`Market rate for ${editingCrop.name} updated to MSP ₹${editMsp}/Qtl & Market Price ₹${editMarketPrice}/Qtl across all Farmer apps!`);
   };
@@ -182,6 +267,7 @@ export default function App() {
     const updated = [...cropsList, newCrop];
     setCropsList(updated);
     localStorage.setItem('smartfarmer_crop_rates', JSON.stringify(updated));
+    realtimeSync.broadcast('msp:update', updated);
     setNewCropName('');
     setShowAddCropModal(false);
     alert(`Crop ${newCrop.name} with MSP ₹${newCrop.msp}/Qtl published successfully to all APMC Centres.`);
@@ -202,6 +288,7 @@ export default function App() {
       status: 'Active'
     };
     setCentresList([...centresList, newC]);
+    realtimeSync.broadcast('centre:update', newC);
     setNewCentreName('');
     setShowAddCentreModal(false);
     alert(`New APMC Mandi Centre ${newC.name} registered and activated.`);
@@ -240,10 +327,10 @@ export default function App() {
 
           <div className="role-label">SELECT YOUR ROLE / RBAC PORTAL</div>
           <div className="role-selector">
-            <button className="role-btn" onClick={() => (window.location.href = window.location.origin)}>
+            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3001`)}>
               Farmer
             </button>
-            <button className="role-btn" onClick={() => (window.location.href = window.location.origin)}>
+            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3010`)}>
               Operator
             </button>
             <button className="role-btn active-admin">
@@ -324,8 +411,12 @@ export default function App() {
         </nav>
 
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-          <button className="admin-nav-item" style={{ color: '#ef4444' }} onClick={() => { setIsAuthenticated(false); window.location.href = window.location.origin; }}>
-            Sign Out & Return to Kisan App
+          <button className="admin-nav-item" style={{ color: '#ef4444' }} onClick={() => {
+            persistentRepo.saveAdmin(null);
+            setIsAuthenticated(false);
+            window.location.href = `http://${window.location.hostname}:3001?logout=true`;
+          }}>
+            Sign Out & Return to Portal
           </button>
         </div>
       </aside>

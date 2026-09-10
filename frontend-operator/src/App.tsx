@@ -2,19 +2,37 @@ import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { FarmSolLogo } from './components/FarmSolLogo';
 import { io } from 'socket.io-client';
+import { realtimeSync } from './utils/realtimeSync';
+import { persistentRepo } from './utils/persistentRepo';
 
 const API_BASE = 'http://localhost:5000/api/v1';
 
 export default function App() {
   // Auth & RBAC State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('auth') === 'true') return true;
+      if (params.get('logout') === 'true') return false;
+      return !!persistentRepo.getOperator();
+    }
+    return false;
+  });
   const [userRole, setUserRole] = useState<'farmer' | 'operator' | 'admin'>('operator');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
   // Form Fields matching user's screenshot
-  const [emailInput, setEmailInput] = useState<string>('saikumar448470@gmail.com');
+  const [emailInput, setEmailInput] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('email')) return params.get('email') || 'saikumar448470@gmail.com';
+      const op = persistentRepo.getOperator();
+      if (op && op.email) return op.email;
+    }
+    return 'saikumar448470@gmail.com';
+  });
   const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
   const [farmerMobile, setFarmerMobile] = useState<string>('9125421544');
 
@@ -47,89 +65,97 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Current Serving & Live Queue State
-  const [currentServing, setCurrentServing] = useState<any>({
-    tokenId: 'PDC-774321',
-    farmerName: 'Prudhvi',
-    farmerPhone: '+91 9125421544',
-    crop: 'Paddy (Grade A)',
-    quantityQuintals: 45,
-    stage: 'QUALITY',
-    arrivedAt: '09:05 AM',
-    vehicleNo: 'AP-39-TX-8819',
-    mspRate: 2300,
-    moisture: 14.2,
-    foreignMatter: 1.1,
-    grossWeight: 7250,
-    tareWeight: 2750
-  });
-
-  const [queueList, setQueueList] = useState<any[]>([
-    {
+  const [currentServing, setCurrentServing] = useState<any>(() => {
+    const saved = persistentRepo.getServing();
+    if (saved) return saved;
+    return {
       tokenId: 'PDC-774321',
       farmerName: 'Prudhvi',
       farmerPhone: '+91 9125421544',
       crop: 'Paddy (Grade A)',
       quantityQuintals: 45,
-      slot: '09:00 AM - 11:00 AM',
-      vehicleNo: 'AP-39-TX-8819',
-      status: 'PROCESSING',
       stage: 'QUALITY',
       arrivedAt: '09:05 AM',
-      mspRate: 2300
-    },
-    {
-      tokenId: 'PDC-F51B1E',
-      farmerName: 'V. Srinivasa Rao',
-      farmerPhone: '+91 9848012345',
-      crop: 'Cotton (Medium Staple)',
-      quantityQuintals: 70,
-      slot: '09:00 AM - 11:00 AM',
-      vehicleNo: 'AP-35-K-4921',
-      status: 'WAITING',
-      stage: 'WAITING',
-      arrivedAt: '09:22 AM',
-      mspRate: 6620
-    },
-    {
-      tokenId: 'PDC-384591',
-      farmerName: 'K. Ramesh',
-      farmerPhone: '+91 9440156789',
-      crop: 'Paddy (Common)',
-      quantityQuintals: 50,
-      slot: '11:00 AM - 01:00 PM',
-      vehicleNo: 'AP-31-TR-9002',
-      status: 'ARRIVED',
-      stage: 'GATE_ENTRY',
-      arrivedAt: '10:45 AM',
-      mspRate: 2183
-    },
-    {
-      tokenId: 'PDC-992014',
-      farmerName: 'B. Satyanarayana',
-      farmerPhone: '+91 9989023456',
-      crop: 'Wheat (Sharbati)',
-      quantityQuintals: 60,
-      slot: '11:00 AM - 01:00 PM',
-      vehicleNo: 'AP-39-AB-1122',
-      status: 'BOOKED',
-      stage: 'BOOKED',
-      arrivedAt: '-',
-      mspRate: 2275
-    },
-    {
-      tokenId: 'PDC-110294',
-      farmerName: 'M. Venkata Reddy',
-      farmerPhone: '+91 9700145678',
-      crop: 'Paddy (Grade A)',
-      quantityQuintals: 80,
-      slot: '07:00 AM - 09:00 AM',
-      vehicleNo: 'AP-39-CC-4455',
-      status: 'COMPLETED',
-      stage: 'COMPLETED',
-      arrivedAt: '07:15 AM',
-      mspRate: 2300
-    }
-  ]);
+      vehicleNo: 'AP-39-TX-8819',
+      mspRate: 2300,
+      moisture: 14.2,
+      foreignMatter: 1.1,
+      grossWeight: 7250,
+      tareWeight: 2750
+    };
+  });
+
+  const [queueList, setQueueList] = useState<any[]>(() => {
+    const saved = persistentRepo.getQueue();
+    if (saved && saved.length > 0) return saved;
+    return [
+      {
+        tokenId: 'PDC-774321',
+        farmerName: 'Prudhvi',
+        farmerPhone: '+91 9125421544',
+        crop: 'Paddy (Grade A)',
+        quantityQuintals: 45,
+        slot: '09:00 AM - 11:00 AM',
+        vehicleNo: 'AP-39-TX-8819',
+        status: 'PROCESSING',
+        stage: 'QUALITY',
+        arrivedAt: '09:05 AM',
+        mspRate: 2300
+      },
+      {
+        tokenId: 'PDC-F51B1E',
+        farmerName: 'V. Srinivasa Rao',
+        farmerPhone: '+91 9848012345',
+        crop: 'Cotton (Medium Staple)',
+        quantityQuintals: 70,
+        slot: '09:00 AM - 11:00 AM',
+        vehicleNo: 'AP-35-K-4921',
+        status: 'WAITING',
+        stage: 'WAITING',
+        arrivedAt: '09:22 AM',
+        mspRate: 6620
+      },
+      {
+        tokenId: 'PDC-384591',
+        farmerName: 'K. Ramesh',
+        farmerPhone: '+91 9440156789',
+        crop: 'Paddy (Common)',
+        quantityQuintals: 50,
+        slot: '11:00 AM - 01:00 PM',
+        vehicleNo: 'AP-31-TR-9002',
+        status: 'ARRIVED',
+        stage: 'GATE_ENTRY',
+        arrivedAt: '10:45 AM',
+        mspRate: 2183
+      },
+      {
+        tokenId: 'PDC-992014',
+        farmerName: 'B. Satyanarayana',
+        farmerPhone: '+91 9989023456',
+        crop: 'Wheat (Sharbati)',
+        quantityQuintals: 60,
+        slot: '11:00 AM - 01:00 PM',
+        vehicleNo: 'AP-39-AB-1122',
+        status: 'BOOKED',
+        stage: 'BOOKED',
+        arrivedAt: '-',
+        mspRate: 2275
+      },
+      {
+        tokenId: 'PDC-110294',
+        farmerName: 'M. Venkata Reddy',
+        farmerPhone: '+91 9700145678',
+        crop: 'Paddy (Grade A)',
+        quantityQuintals: 80,
+        slot: '07:00 AM - 09:00 AM',
+        vehicleNo: 'AP-39-CC-4455',
+        status: 'COMPLETED',
+        stage: 'COMPLETED',
+        arrivedAt: '07:15 AM',
+        mspRate: 2300
+      }
+    ];
+  });
 
   // Modals & Forms
   const [showGateScanModal, setShowGateScanModal] = useState<boolean>(false);
@@ -153,11 +179,15 @@ export default function App() {
   ]);
 
   // Payments Ledger Data
-  const [paymentsLedger, setPaymentsLedger] = useState<any[]>([
-    { id: 'DBT-2026-9041', tokenId: 'PDC-110294', farmer: 'M. Venkata Reddy', crop: 'Paddy (Grade A)', weight: 80, msp: 2300, amount: 184000, bank: 'SBI A/C ****9901', utr: 'SBIN002948102', status: 'SUCCESS', date: '01 Sep 2026' },
-    { id: 'DBT-2026-9038', tokenId: 'PDC-009182', farmer: 'G. Apparao', crop: 'Cotton (Medium Staple)', weight: 65, msp: 6620, amount: 430300, bank: 'Union Bank A/C ****4412', utr: 'UBIN004810293', status: 'SUCCESS', date: '31 Aug 2026' },
-    { id: 'DBT-2026-9035', tokenId: 'PDC-881920', farmer: 'P. Krishna Murthy', crop: 'Paddy (Common)', weight: 110, msp: 2183, amount: 240130, bank: 'SBI A/C ****7732', utr: 'SBIN001928471', status: 'SUCCESS', date: '31 Aug 2026' }
-  ]);
+  const [paymentsLedger, setPaymentsLedger] = useState<any[]>(() => {
+    const saved = persistentRepo.getPaymentsLedger();
+    if (saved && saved.length > 0) return saved;
+    return [
+      { id: 'DBT-2026-9041', tokenId: 'PDC-110294', farmer: 'M. Venkata Reddy', crop: 'Paddy (Grade A)', weight: 80, msp: 2300, amount: 184000, bank: 'SBI A/C ****9901', utr: 'SBIN002948102', status: 'SUCCESS', date: '01 Sep 2026' },
+      { id: 'DBT-2026-9038', tokenId: 'PDC-009182', farmer: 'G. Apparao', crop: 'Cotton (Medium Staple)', weight: 65, msp: 6620, amount: 430300, bank: 'Union Bank A/C ****4412', utr: 'UBIN004810293', status: 'SUCCESS', date: '31 Aug 2026' },
+      { id: 'DBT-2026-9035', tokenId: 'PDC-881920', farmer: 'P. Krishna Murthy', crop: 'Paddy (Common)', weight: 110, msp: 2183, amount: 240130, bank: 'SBI A/C ****7732', utr: 'SBIN001928471', status: 'SUCCESS', date: '31 Aug 2026' }
+    ];
+  });
 
   // Payment Settlement Modal State
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
@@ -168,6 +198,36 @@ export default function App() {
   const [socket, setSocket] = useState<any>(null);
 
   useEffect(() => {
+    realtimeSync.setPortal('operator');
+    const unsubQueue = realtimeSync.subscribe('queue:update', (data: any) => {
+      if (data && data.tokenId) {
+        setQueueList((prev) =>
+          prev.map((q) => (q.tokenId === data.tokenId ? { ...q, stage: data.currentStage || q.stage, status: data.status || q.status } : q))
+        );
+      }
+    });
+
+    const unsubBooking = realtimeSync.subscribe('booking:created', (data: any) => {
+      if (data && data.tokenId) {
+        setQueueList((prev) => [
+          {
+            tokenId: data.tokenId,
+            farmerName: data.farmerName || 'Registered Farmer',
+            farmerPhone: data.farmerPhone || '+91 9125421544',
+            crop: data.cropName || 'Paddy (Grade A)',
+            quantityQuintals: data.expectedQuantityQuintals || 45,
+            slot: data.timeWindow || '09:00 AM - 11:00 AM',
+            vehicleNo: 'AP-39-TX-8819',
+            status: 'WAITING',
+            stage: 'WAITING',
+            arrivedAt: 'Just Now',
+            mspRate: data.mspRate || 2300
+          },
+          ...prev
+        ]);
+      }
+    });
+
     let s: any = null;
     try {
       s = io('http://localhost:5000', { transports: ['websocket', 'polling'] });
@@ -180,15 +240,35 @@ export default function App() {
       console.warn('Socket connect error in operator:', e);
     }
     return () => {
+      unsubQueue();
+      unsubBooking();
       if (s) s.disconnect();
     };
   }, [currentOperator.id, currentOperator.centreId]);
+
+  // Synchronize state with persistent repo
+  useEffect(() => {
+    if (queueList && queueList.length > 0) {
+      persistentRepo.saveQueue(queueList);
+    }
+  }, [queueList]);
+
+  useEffect(() => {
+    persistentRepo.saveServing(currentServing);
+  }, [currentServing]);
+
+  useEffect(() => {
+    if (paymentsLedger && paymentsLedger.length > 0) {
+      persistentRepo.savePaymentsLedger(paymentsLedger);
+    }
+  }, [paymentsLedger]);
 
   const handleLoginSubmit = () => {
     setAuthLoading(true);
     setTimeout(() => {
       setAuthLoading(false);
       setIsAuthenticated(true);
+      persistentRepo.saveOperator(currentOperator);
     }, 400);
   };
 
@@ -204,6 +284,12 @@ export default function App() {
         foreignMatter: 1.0
       });
       setQueueList(queueList.map(q => q.tokenId === nextWaiting.tokenId ? { ...q, status: 'PROCESSING', stage: 'QUALITY' } : q));
+      realtimeSync.broadcast('queue:update', {
+        tokenId: nextWaiting.tokenId,
+        farmerName: nextWaiting.farmerName,
+        currentStage: 'QUALITY',
+        status: 'PROCESSING'
+      });
       alert(`Calling Token #${nextWaiting.tokenId} (${nextWaiting.farmerName}) to Quality Inspection Desk.`);
     } else {
       alert('No waiting farmers in the queue currently.');
@@ -212,12 +298,15 @@ export default function App() {
 
   const handleGateScanSubmit = () => {
     const found = queueList.find(q => q.tokenId === scanInputToken.trim().toUpperCase());
+    const token = found ? found.tokenId : scanInputToken.trim().toUpperCase();
     if (found) {
       setQueueList(queueList.map(q => q.tokenId === found.tokenId ? { ...q, status: 'WAITING', stage: 'WAITING', arrivedAt: 'Just Now' } : q));
       alert(`Gate Entry Verified! Token #${found.tokenId} for ${found.farmerName} admitted to Mandi.`);
     } else {
       alert(`Gate Pass Token #${scanInputToken} verified and registered at APMC Centre #402.`);
     }
+    realtimeSync.broadcast('gate:arrival', { tokenId: token, status: 'WAITING', stage: 'WAITING' });
+    realtimeSync.broadcast('queue:update', { tokenId: token, currentStage: 'WAITING', status: 'WAITING' });
     setShowGateScanModal(false);
   };
 
@@ -229,27 +318,63 @@ export default function App() {
     if (currentServing) {
       setCurrentServing({ ...currentServing, stage: 'WEIGHING', moisture, foreignMatter, qualityGrade });
       setQueueList(queueList.map(q => q.tokenId === currentServing.tokenId ? { ...q, stage: 'WEIGHING' } : q));
+      realtimeSync.broadcast('queue:update', {
+        tokenId: currentServing.tokenId,
+        currentStage: 'WEIGHING',
+        moisture,
+        foreignMatter,
+        qualityGrade
+      });
     }
     setShowQualityModal(false);
     alert(`Quality Assay Passed: Moisture ${moisture}% (Govt Limit ≤ 17.0%). Produce forwarded to Weighbridge.`);
   };
 
   const handleConfirmWeighing = () => {
-    const netQuintals = (grossWeight - tareWeight) / 100;
+    const liveNetKg = Math.max(0, grossWeight - tareWeight);
+    const liveNetQtl = Number((liveNetKg / 100).toFixed(2));
+    const liveMoisture = currentServing?.moisture || moisture || 14.0;
+    const liveExcessMoisture = Math.max(0, liveMoisture - 14.0);
+    const liveDockageKg = liveExcessMoisture > 0 ? Number((liveNetKg * (liveExcessMoisture * 0.005)).toFixed(1)) : 0;
+    const liveDockageQtl = Number((liveDockageKg / 100).toFixed(2));
+    const finalQuintals = Number(Math.max(0, liveNetQtl - liveDockageQtl).toFixed(2));
+    const mspRate = currentServing?.mspRate || 2300;
+    const payout = Math.round(finalQuintals * mspRate);
+
     if (currentServing) {
-      const payout = netQuintals * currentServing.mspRate;
-      setCurrentServing({
+      const updatedServing = {
         ...currentServing,
         stage: 'COMPLETED',
         grossWeight,
         tareWeight,
-        netQuintals,
+        netWeight: liveNetKg,
+        netQuintals: finalQuintals,
+        dockageKg: liveDockageKg,
+        calculatedPayout: payout
+      };
+      setCurrentServing(updatedServing);
+      persistentRepo.saveServing(updatedServing);
+
+      const updatedQueue = queueList.map(q =>
+        q.tokenId === currentServing.tokenId
+          ? { ...q, stage: 'COMPLETED', status: 'COMPLETED', quantityQuintals: finalQuintals, calculatedPayout: payout }
+          : q
+      );
+      setQueueList(updatedQueue);
+      persistentRepo.saveQueue(updatedQueue);
+
+      realtimeSync.broadcast('queue:update', {
+        tokenId: currentServing.tokenId,
+        currentStage: 'COMPLETED',
+        grossWeight,
+        tareWeight,
+        netQuintals: finalQuintals,
+        dockageKg: liveDockageKg,
         calculatedPayout: payout
       });
-      setQueueList(queueList.map(q => q.tokenId === currentServing.tokenId ? { ...q, stage: 'COMPLETED', status: 'COMPLETED', quantityQuintals: netQuintals } : q));
     }
     setShowWeighingModal(false);
-    alert(`Weighbridge Gross: ${grossWeight} kg, Tare: ${tareWeight} kg. Net Produce: ${((grossWeight - tareWeight) / 100).toFixed(2)} Quintals recorded.`);
+    alert(`Weighbridge Confirmed:\n• Gross: ${grossWeight} kg\n• Tare: ${tareWeight} kg\n• Net Produce: ${liveNetQtl} Qtl\n• Moisture Dockage: -${liveDockageKg} kg (${liveDockageQtl} Qtl)\n• Final Billable: ${finalQuintals} Qtl @ ₹${mspRate}/Qtl = ₹${payout.toLocaleString('en-IN')}`);
   };
 
   const handleCompleteProcurement = () => {
@@ -283,15 +408,24 @@ export default function App() {
       quantityQuintals: netQtl
     };
 
-    // Emit live WebSocket event to Farmer & Admin
+    const teluguSms = isCompleted
+      ? `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} మొత్తం DBT ద్వారా మీ బ్యాంక్ ఖాతాలో జమ చేయబడింది. UTR: ${payload.utr}. - వినియోగదారుల వ్యవహారాల మంత్రిత్వ శాఖ (భారత ప్రభుత్వం)`
+      : `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} చెల్లింపు 'బాకీ (Pending)' గా నమోదు చేయబడింది. ధృవీకరణ పూర్తయ్యాక జమ చేయబడుతుంది. - భారత ప్రభుత్వం`;
+
+    // Emit via RealtimeSync dual-layer bus (cross-tab broadcast + socket)
+    realtimeSync.broadcast('payment:update', payload);
+    realtimeSync.broadcast('sms:notification', {
+      farmerId: payload.farmerId,
+      sender: 'VD-FARMSOL',
+      message: teluguSms,
+      type: 'PAYMENT',
+      status: payload.status,
+      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    });
+
+    // Also emit live WebSocket event directly
     if (socket) {
       socket.emit('payment:update', payload);
-
-      // Generate localized SMS text for farmer push notification
-      const teluguSms = isCompleted
-        ? `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} మొత్తం DBT ద్వారా మీ బ్యాంక్ ఖాతాలో జమ చేయబడింది. UTR: ${payload.utr}. - వినియోగదారుల వ్యవహారాల మంత్రిత్వ శాఖ (భారత ప్రభుత్వం)`
-        : `డియర్ ${payload.farmerName}, మీ టోకెన్ #${payload.tokenId} కు గాను ₹${payload.amount.toLocaleString('en-IN')} చెల్లింపు 'బాకీ (Pending)' గా నమోదు చేయబడింది. ధృవీకరణ పూర్తయ్యాక జమ చేయబడుతుంది. - భారత ప్రభుత్వం`;
-
       socket.emit('sms:notification', {
         farmerId: payload.farmerId,
         sender: 'VD-FARMSOL',
@@ -375,8 +509,8 @@ export default function App() {
       bankAccount: 'State Bank of India (A/C: ****5512)',
       utrRef: paymentUtrInput,
       dbtStatus: isCompleted
-        ? '✓ DIRECT BENEFIT TRANSFER (DBT) EXECUTED'
-        : '⏳ PAYMENT PENDING MANDI CLEARANCE'
+        ? '[SUCCESS] DIRECT BENEFIT TRANSFER (DBT) EXECUTED'
+        : '[PENDING] PAYMENT PENDING MANDI CLEARANCE'
     };
     setSelectedPrintSlipData(cert);
     setCompletedCertData(cert);
@@ -469,13 +603,13 @@ export default function App() {
 
           <div className="role-label">SELECT YOUR ROLE / RBAC PORTAL</div>
           <div className="role-selector">
-            <button className="role-btn" onClick={() => (window.location.href = window.location.origin)}>
+            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3001`)}>
               Farmer
             </button>
             <button className="role-btn active-operator">
               Operator
             </button>
-            <button className="role-btn" onClick={() => (window.location.href = window.location.origin)}>
+            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3020`)}>
               Admin
             </button>
           </div>
@@ -553,8 +687,12 @@ export default function App() {
         </nav>
 
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-          <button className="op-nav-item" style={{ color: '#ef4444' }} onClick={() => { setIsAuthenticated(false); window.location.href = window.location.origin; }}>
-            Sign Out & Return to Kisan App
+          <button className="op-nav-item" style={{ color: '#ef4444' }} onClick={() => {
+            persistentRepo.saveOperator(null);
+            setIsAuthenticated(false);
+            window.location.href = `http://${window.location.hostname}:3001?logout=true`;
+          }}>
+            Sign Out & Return to Portal
           </button>
         </div>
       </aside>
@@ -1150,26 +1288,65 @@ export default function App() {
       {/* ========================================================= */}
       {showQualityModal && (
         <div className="modal-overlay">
-          <div className="modal-card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 6 }}>Quality & Moisture Laboratory Assay</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14 }}>Government Standard Limit: Moisture ≤ 17.0% for Paddy Grade A</p>
+          <div className="modal-card" style={{ maxWidth: 480 }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: 4 }}>Quality & Moisture Laboratory Assay</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+              Government Kharif 2026 Procurement Standard (Paddy Grade A Limit: Moisture ≤ 17.0%, Base Standard ≤ 14.0%)
+            </p>
             
             <div style={{ marginBottom: 12 }}>
               <label className="form-label-auth">Moisture Percentage (%) <span style={{ color: '#ef4444' }}>*</span></label>
-              <input type="number" step="0.1" className="input-box-auth" value={moisture} onChange={(e) => setMoisture(Number(e.target.value))} />
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="30"
+                className="input-box-auth"
+                value={moisture}
+                onChange={(e) => setMoisture(Number(e.target.value))}
+              />
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <label className="form-label-auth">Foreign Matter / Dockage (%)</label>
-              <input type="number" step="0.1" className="input-box-auth" value={foreignMatter} onChange={(e) => setForeignMatter(Number(e.target.value))} />
+              <label className="form-label-auth">Foreign Matter / Inert Dockage (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                className="input-box-auth"
+                value={foreignMatter}
+                onChange={(e) => setForeignMatter(Number(e.target.value))}
+              />
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label className="form-label-auth">Issued Grade</label>
+            <div style={{ marginBottom: 14 }}>
+              <label className="form-label-auth">Assayed Produce Grade</label>
               <select className="input-box-auth" value={qualityGrade} onChange={(e) => setQualityGrade(e.target.value)}>
-                <option value="GRADE_A">Grade A (Full MSP Rate)</option>
-                <option value="COMMON">Common Standard</option>
+                <option value="GRADE_A">Grade A (Guaranteed Full MSP Rate)</option>
+                <option value="COMMON">Common Standard Produce</option>
               </select>
+            </div>
+
+            {/* Live Dynamic Quality Assessment Box */}
+            <div style={{
+              background: moisture > 17.0 ? '#fef2f2' : moisture > 14.0 ? '#fffbeb' : '#f0fdf4',
+              border: `1.5px solid ${moisture > 17.0 ? '#ef4444' : moisture > 14.0 ? '#f59e0b' : '#22c55e'}`,
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 16,
+              fontSize: '0.8rem'
+            }}>
+              <div style={{ fontWeight: 800, color: moisture > 17.0 ? '#b91c1c' : moisture > 14.0 ? '#b45309' : '#15803d', marginBottom: 4 }}>
+                {moisture > 17.0 ? 'CRITICAL: EXCEEDS 17.0% CEILING' : moisture > 14.0 ? 'ACCEPTABLE WITH MOISTURE DOCKAGE' : 'OPTIMAL DRY PRODUCE (PASS)'}
+              </div>
+              <div>
+                {moisture > 17.0
+                  ? `Moisture ${moisture}% is above the mandated 17.0% government limit. Produce cannot be accepted without re-drying.`
+                  : moisture > 14.0
+                  ? `Excess moisture: ${(moisture - 14.0).toFixed(1)}%. Dynamic dockage penalty of ${((moisture - 14.0) * 0.5).toFixed(2)}% will be deducted from net weight.`
+                  : `Moisture ${moisture}% is within the ideal 14.0% base standard. Zero dockage penalty applied.`}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
@@ -1181,38 +1358,113 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL 3: WEIGHBRIDGE MODAL                                */}
+      {/* MODAL 3: ELECTRONIC WEIGHBRIDGE DYNAMIC CALCULATOR       */}
       {/* ========================================================= */}
-      {showWeighingModal && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 6 }}>Electronic Weighbridge Calculator</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14 }}>Gross vehicle weight minus tare weight.</p>
+      {showWeighingModal && (() => {
+        const liveNetKg = Math.max(0, grossWeight - tareWeight);
+        const liveNetQtl = Number((liveNetKg / 100).toFixed(2));
+        const liveMoisture = currentServing?.moisture || moisture || 14.0;
+        const liveExcessMoisture = Math.max(0, liveMoisture - 14.0);
+        const liveDockageKg = liveExcessMoisture > 0 ? Number((liveNetKg * (liveExcessMoisture * 0.005)).toFixed(1)) : 0;
+        const liveDockageQtl = Number((liveDockageKg / 100).toFixed(2));
+        const liveBillableQtl = Number(Math.max(0, liveNetQtl - liveDockageQtl).toFixed(2));
+        const liveMspRate = currentServing?.mspRate || 2300;
+        const liveTotalPayout = Math.round(liveBillableQtl * liveMspRate);
 
-            <div style={{ marginBottom: 10 }}>
-              <label className="form-label-auth">Gross Weight (Loaded Vehicle in Kg)</label>
-              <input type="number" className="input-box-auth" value={grossWeight} onChange={(e) => setGrossWeight(Number(e.target.value))} />
-            </div>
+        return (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: 520 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Electronic Weighbridge Calculator</h3>
+                <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: 4, fontWeight: 800 }}>
+                  LIVE DYNAMIC
+                </span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+                Instant dynamic calculations based on electronic gross and tare load cell telemetry.
+              </p>
 
-            <div style={{ marginBottom: 10 }}>
-              <label className="form-label-auth">Tare Weight (Empty Vehicle in Kg)</label>
-              <input type="number" className="input-box-auth" value={tareWeight} onChange={(e) => setTareWeight(Number(e.target.value))} />
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="form-label-auth">Gross Loaded Vehicle (Kg) <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    type="number"
+                    step="10"
+                    className="input-box-auth"
+                    value={grossWeight}
+                    onChange={(e) => setGrossWeight(Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label-auth">Tare Empty Vehicle (Kg) <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    type="number"
+                    step="10"
+                    className="input-box-auth"
+                    value={tareWeight}
+                    onChange={(e) => setTareWeight(Number(e.target.value))}
+                  />
+                </div>
+              </div>
 
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, margin: '14px 0', border: '1px solid var(--border)' }}>
-              <div><strong>Net Produce Weight:</strong> {((grossWeight - tareWeight) / 100).toFixed(2)} Quintals</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700, marginTop: 4 }}>
-                Calculated MSP Payout: ₹{(((grossWeight - tareWeight) / 100) * (currentServing?.mspRate || 2300)).toLocaleString('en-IN')}
+              {/* Dynamic Mathematical Breakdown Box */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: 10,
+                padding: 14,
+                marginBottom: 16,
+                fontSize: '0.82rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#64748b' }}>Gross Produce Weight:</span>
+                  <strong>{liveNetKg.toLocaleString('en-IN')} kg ({liveNetQtl} Quintals)</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#64748b' }}>Assayed Moisture Level:</span>
+                  <span>{liveMoisture}% {liveExcessMoisture > 0 ? `(+${liveExcessMoisture.toFixed(1)}% excess)` : '(Base Standard)'}</span>
+                </div>
+                {liveDockageKg > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#b45309' }}>
+                    <span>Moisture Dockage Penalty:</span>
+                    <strong>- {liveDockageKg} kg (- {liveDockageQtl} Qtl)</strong>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: 6, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Final Settlement Produce:</span>
+                  <strong style={{ color: '#2563eb', fontSize: '0.95rem' }}>{liveBillableQtl} Quintals</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ color: '#64748b' }}>Govt Guaranteed MSP Rate:</span>
+                  <strong>₹{liveMspRate.toLocaleString('en-IN')} / Quintal</strong>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  marginTop: 6
+                }}>
+                  <span style={{ fontWeight: 800, color: '#166534' }}>TOTAL DBT PAYOUT:</span>
+                  <strong style={{ fontSize: '1.25rem', fontWeight: 900, color: '#15803d' }}>
+                    ₹{liveTotalPayout.toLocaleString('en-IN')}
+                  </strong>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-scan-qr" style={{ flex: 1 }} onClick={() => setShowWeighingModal(false)}>Cancel</button>
+                <button className="btn-call-next" style={{ flex: 1.2, background: '#16a34a' }} onClick={handleConfirmWeighing}>
+                  Confirm & Commit Weight
+                </button>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-scan-qr" style={{ flex: 1 }} onClick={() => setShowWeighingModal(false)}>Cancel</button>
-              <button className="btn-call-next" style={{ flex: 1 }} onClick={handleConfirmWeighing}>Confirm Net Weight</button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* MODAL 4: PROCUREMENT CERTIFICATE MODAL                    */}

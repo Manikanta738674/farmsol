@@ -5,6 +5,10 @@ import { QRCodeCanvas } from './components/QRCodeCanvas';
 import { FarmSolLogo } from './components/FarmSolLogo';
 import { io } from 'socket.io-client';
 import { COMPREHENSIVE_CROPS, CROP_CATEGORIES } from './constants/crops';
+import { realtimeSync } from './utils/realtimeSync';
+import { persistentRepo } from './utils/persistentRepo';
+import { GatewayPage } from './components/GatewayPage';
+import { AcknowledgeModal } from './components/AcknowledgeModal';
 
 const getHost = () => {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
@@ -57,6 +61,153 @@ interface RealtimeSmsAlert {
 
 // Master Mandi Procurement Centres with Geolocation Coordinates & Capacities
 const MASTER_CENTRES = [
+  {
+    centreId: 'PC-AP-SLR-0601',
+    name: 'Salur APMC Agriculture Market Yard #601',
+    nameTe: 'సాలూరు APMC వ్యవసాయ మార్కెట్ యార్డ్ #601',
+    nameHi: 'सालूर एपीएमसी कृषि बाजार यार्ड #601',
+    district: 'Parvathipuram Manyam / Salur, Andhra Pradesh',
+    districtTe: 'పార్వతీపురం మన్యం / సాలూరు, ఆంధ్రప్రదేశ్',
+    districtHi: 'पार्वतीपुरम मान्यम / सालूर, आंध्र प्रदेश',
+    lat: 18.5284,
+    lng: 83.2081,
+    coords: '18.5284,83.2081',
+    address: 'APMC Market Yard Road, Salur, AP - 535591',
+    addressTe: 'APMC మార్కెట్ యార్డ్ రోడ్, సాలూరు, ఆంధ్రప్రదేశ్',
+    addressHi: 'एपीएमसी मार्केट यार्ड रोड, सालूर, आंध्र प्रदेश',
+    contact: '+91 94901 33441',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1800,
+    currentQueueCount: 3,
+    avgWaitMins: 10,
+    trafficStatus: 'LOW' as const
+  },
+  {
+    centreId: 'PC-AP-BBL-0602',
+    name: 'Bobbili APMC Grain & Paddy Centre #602',
+    nameTe: 'బొబ్బిలి APMC ధాన్యపు సేకరణ కేంద్రం #602',
+    nameHi: 'बोब्बिली एपीएमसी अनाज खरीद केंद्र #602',
+    district: 'Bobbili, Parvathipuram Manyam, Andhra Pradesh',
+    districtTe: 'బొబ్బిలి, పార్వతీపురం మన్యం, ఆంధ్రప్రదేశ్',
+    districtHi: 'बोब्बिली, पार्वतीपुरम मान्यम, आंध्र प्रदेश',
+    lat: 18.5670,
+    lng: 83.3640,
+    coords: '18.5670,83.3640',
+    address: 'Bobbili Railway Station Road, Mandi Yard',
+    addressTe: 'బొబ్బిలి రైల్వే స్టేషన్ రోడ్, మండి యార్డ్',
+    addressHi: 'बोब्बिली रेलवे स्टेशन रोड, मंडी यार्ड',
+    contact: '+91 94901 55662',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1500,
+    currentQueueCount: 6,
+    avgWaitMins: 18,
+    trafficStatus: 'LOW' as const
+  },
+  {
+    centreId: 'PC-AP-PVP-0603',
+    name: 'Parvathipuram Central APMC Mandi #603',
+    nameTe: 'పార్వతీపురం సెంట్రల్ APMC మండి #603',
+    nameHi: 'पार्वतीपुरम सेंट्रल एपीएमसी मंडी #603',
+    district: 'Parvathipuram Manyam, Andhra Pradesh',
+    districtTe: 'పార్వతీపురం మన్యం, ఆంధ్రప్రదేశ్',
+    districtHi: 'पार्वतीपुरम मान्यम, आंध्र प्रदेश',
+    lat: 18.7770,
+    lng: 83.4260,
+    coords: '18.7770,83.4260',
+    address: 'Rythu Seva Marg, Parvathipuram',
+    addressTe: 'రైతు సేవా మార్గ్, పార్వతీపురం',
+    addressHi: 'रायथू सेवा मार्ग, पार्वतीपुरम',
+    contact: '+91 94901 88993',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1600,
+    currentQueueCount: 7,
+    avgWaitMins: 20,
+    trafficStatus: 'MODERATE' as const
+  },
+  {
+    centreId: 'PC-AP-GJP-0604',
+    name: 'Gajapathinagaram APMC Kendra #604',
+    nameTe: 'గజపతినగరం APMC కేంద్రం #604',
+    nameHi: 'गजपतिनगरम एपीएमसी केंद्र #604',
+    district: 'Vizianagaram, Andhra Pradesh',
+    districtTe: 'విజయనగరం, ఆంధ్రప్రదేశ్',
+    districtHi: 'विजयनगरम, आंध्र प्रदेश',
+    lat: 18.2830,
+    lng: 83.3330,
+    coords: '18.2830,83.3330',
+    address: 'Main Road APMC Yard, Gajapathinagaram',
+    addressTe: 'మెయిన్ రోడ్ APMC యార్డ్, గజపతినగరం',
+    addressHi: 'मेन रोड एपीएमसी यार्ड, गजपतिनगरम',
+    contact: '+91 94401 77112',
+    hours: '08:00 AM - 05:30 PM',
+    dailyCapacityQuintals: 1200,
+    currentQueueCount: 5,
+    avgWaitMins: 15,
+    trafficStatus: 'LOW' as const
+  },
+  {
+    centreId: 'PC-AP-VZM-0605',
+    name: 'Vizianagaram Central Market Yard #605',
+    nameTe: 'విజయనగరం సెంట్రల్ మార్కెట్ యార్డ్ #605',
+    nameHi: 'विजयनगरम सेंट्रल मार्केट यार्ड #605',
+    district: 'Vizianagaram, Andhra Pradesh',
+    districtTe: 'విజయనగరం, ఆంధ్రప్రదేశ్',
+    districtHi: 'विजयनगरम, आंध्र प्रदेश',
+    lat: 18.1124,
+    lng: 83.3970,
+    coords: '18.1124,83.3970',
+    address: 'Cantonment APMC Complex, Vizianagaram',
+    addressTe: 'కంటోన్మెంట్ APMC కాంప్లెక్స్, విజయనగరం',
+    addressHi: 'छावनी एपीएमसी परिसर, विजयनगरम',
+    contact: '+91 94401 33221',
+    hours: '07:30 AM - 06:30 PM',
+    dailyCapacityQuintals: 2200,
+    currentQueueCount: 11,
+    avgWaitMins: 24,
+    trafficStatus: 'MODERATE' as const
+  },
+  {
+    centreId: 'PC-AP-SKL-0701',
+    name: 'Srikakulam APMC Rythu Yard #701',
+    nameTe: 'శ్రీకాకుళం APMC రైతు యార్డ్ #701',
+    nameHi: 'श्रीकाकुलम एपीएमसी रायथू यार्ड #701',
+    district: 'Srikakulam, Andhra Pradesh',
+    districtTe: 'శ్రీకాకుళం, ఆంధ్రప్రదేశ్',
+    districtHi: 'श्रीकाकुलम, आंध्र प्रदेश',
+    lat: 18.2970,
+    lng: 83.8967,
+    coords: '18.2970,83.8967',
+    address: 'National Highway 16 By-pass Yard, Srikakulam',
+    addressTe: 'నేషనల్ హైవే 16 బై-పాస్ యార్డ్, శ్రీకాకుళం',
+    addressHi: 'राष्ट्रीय राजमार्ग 16 बाईपास यार्ड, श्रीकाकुलम',
+    contact: '+91 94401 99882',
+    hours: '08:00 AM - 06:00 PM',
+    dailyCapacityQuintals: 1400,
+    currentQueueCount: 8,
+    avgWaitMins: 22,
+    trafficStatus: 'MODERATE' as const
+  },
+  {
+    centreId: 'PC-AP-VSKP-0108',
+    name: 'Visakha Kisan Seva Mandi #108',
+    nameTe: 'విశాఖ కిసాన్ సేవా మండి #108',
+    nameHi: 'विशाखा किसान सेवा मंडी #108',
+    district: 'Visakhapatnam, Andhra Pradesh',
+    districtTe: 'విశాఖపట్నం, ఆంధ్రప్రదేశ్',
+    districtHi: 'विशाखापत्तनम, आंध्र प्रदेश',
+    lat: 17.6868,
+    lng: 83.2185,
+    coords: '17.6868,83.2185',
+    address: 'Anakapalle Jaggery & Grain APMC',
+    addressTe: 'అనకాపల్లి బెల్లం & ధాన్యపు మార్కెట్',
+    addressHi: 'अनकापल्ले गुड़ और अनाज मंडी',
+    contact: '+91 94401 22334',
+    hours: '08:00 AM - 05:30 PM',
+    dailyCapacityQuintals: 1000,
+    currentQueueCount: 18,
+    avgWaitMins: 45,
+    trafficStatus: 'HIGH' as const
+  },
   {
     centreId: 'PC-AP-KKD-0402',
     name: 'Sri Lakshmi APMC Procurement Centre #402',
@@ -121,27 +272,6 @@ const MASTER_CENTRES = [
     trafficStatus: 'MODERATE' as const
   },
   {
-    centreId: 'PC-AP-VSKP-0108',
-    name: 'Visakha Kisan Seva Mandi #108',
-    nameTe: 'విశాఖ కిసాన్ సేవా మండి #108',
-    nameHi: 'विशाखा किसान सेवा मंडी #108',
-    district: 'Visakhapatnam, Andhra Pradesh',
-    districtTe: 'విశాఖపట్నం, ఆంధ్రప్రదేశ్',
-    districtHi: 'विशाखापत्तनम, आंध्र प्रदेश',
-    lat: 17.6868,
-    lng: 83.2185,
-    coords: '17.6868,83.2185',
-    address: 'Anakapalle Jaggery & Grain APMC',
-    addressTe: 'అనకాపల్లి బెల్లం & ధాన్యపు మార్కెట్',
-    addressHi: 'अनकापल्ले गुड़ और अनाज मंडी',
-    contact: '+91 94401 22334',
-    hours: '08:00 AM - 05:30 PM',
-    dailyCapacityQuintals: 1000,
-    currentQueueCount: 18,
-    avgWaitMins: 45,
-    trafficStatus: 'HIGH' as const
-  },
-  {
     centreId: 'PC-AP-VJA-0504',
     name: 'Krishna Delta APMC Kendra #504',
     nameTe: 'కృష్ణా డెల్టా APMC కేంద్రం #504',
@@ -163,6 +293,48 @@ const MASTER_CENTRES = [
     trafficStatus: 'HIGH' as const
   }
 ];
+
+// Intelligent Address & Geocoding Resolver for Andhra Pradesh & India
+function resolveAddressToCoords(addressStr: string = '', districtStr: string = ''): { lat: number; lng: number; locationName: string } {
+  const combined = `${addressStr || ''} ${districtStr || ''}`.toLowerCase();
+
+  if (combined.includes('salur') || combined.includes('saluru') || combined.includes('535591')) {
+    return { lat: 18.5284, lng: 83.2081, locationName: 'Salur, Parvathipuram Manyam' };
+  }
+  if (combined.includes('bobbili') || combined.includes('535558')) {
+    return { lat: 18.5670, lng: 83.3640, locationName: 'Bobbili, Parvathipuram Manyam' };
+  }
+  if (combined.includes('parvathipuram') || combined.includes('535501')) {
+    return { lat: 18.7770, lng: 83.4260, locationName: 'Parvathipuram' };
+  }
+  if (combined.includes('gajapathinagaram') || combined.includes('535270')) {
+    return { lat: 18.2830, lng: 83.3330, locationName: 'Gajapathinagaram' };
+  }
+  if (combined.includes('vizianagaram') || combined.includes('535001') || combined.includes('535002')) {
+    return { lat: 18.1124, lng: 83.3970, locationName: 'Vizianagaram' };
+  }
+  if (combined.includes('srikakulam') || combined.includes('532001')) {
+    return { lat: 18.2970, lng: 83.8967, locationName: 'Srikakulam' };
+  }
+  if (combined.includes('visakhapatnam') || combined.includes('vizag') || combined.includes('anakapalle') || combined.includes('5300')) {
+    return { lat: 17.6868, lng: 83.2185, locationName: 'Visakhapatnam' };
+  }
+  if (combined.includes('kakinada') || combined.includes('53300')) {
+    return { lat: 16.9891, lng: 82.2475, locationName: 'Kakinada' };
+  }
+  if (combined.includes('rajahmundry') || combined.includes('rajamahendravaram') || combined.includes('53310')) {
+    return { lat: 17.0005, lng: 81.7799, locationName: 'Rajahmundry' };
+  }
+  if (combined.includes('guntur') || combined.includes('52200')) {
+    return { lat: 16.3067, lng: 80.4365, locationName: 'Guntur' };
+  }
+  if (combined.includes('vijayawada') || combined.includes('5200')) {
+    return { lat: 16.5062, lng: 80.6480, locationName: 'Vijayawada' };
+  }
+
+  // Default coordinate if no specific AP town match
+  return { lat: 18.5284, lng: 83.2081, locationName: 'Salur / Parvathipuram Manyam, AP' };
+}
 
 // Haversine Formula for Accurate Geodesic Distance
 function calculateHaversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -194,7 +366,14 @@ function computeAiMandiScore(
 
 export default function App() {
   // Authentication & RBAC State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('logout') === 'true') return false;
+      return !!persistentRepo.getActiveFarmer();
+    }
+    return false;
+  });
   const [userRole, setUserRole] = useState<'farmer' | 'operator' | 'admin'>('farmer');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -204,17 +383,22 @@ export default function App() {
   const [emailInput, setEmailInput] = useState<string>('saikumar448470@gmail.com');
   const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
   const [otpValues, setOtpValues] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
-  const [recentProcurements, setRecentProcurements] = useState<any[]>([
-    { procurementId: 'RCP-2026-9041', date: '01 Sep 2026', crop: 'Paddy (Grade A)', netWeightQuintals: 45.0, ratePerQuintal: 2300, totalAmount: 103500, status: 'SUCCESS' },
-    { procurementId: 'RCP-2026-8812', date: '24 Aug 2026', crop: 'Paddy (Common)', netWeightQuintals: 30.0, ratePerQuintal: 2183, totalAmount: 65490, status: 'SUCCESS' }
-  ]);
+  const [recentProcurements, setRecentProcurements] = useState<any[]>(() => {
+    const saved = persistentRepo.getProcurements();
+    if (saved && saved.length > 0) return saved;
+    return [
+      { procurementId: 'RCP-2026-9041', date: '01 Sep 2026', crop: 'Paddy (Grade A)', netWeightQuintals: 45.0, ratePerQuintal: 2300, totalAmount: 103500, status: 'SUCCESS' },
+      { procurementId: 'RCP-2026-8812', date: '24 Aug 2026', crop: 'Paddy (Common)', netWeightQuintals: 30.0, ratePerQuintal: 2183, totalAmount: 65490, status: 'SUCCESS' }
+    ];
+  });
 
   // Check URL params for logout signal from Operator or Admin portals
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('logout') === 'true' || params.get('auth') === 'true') {
+    if (params.get('logout') === 'true') {
       setIsAuthenticated(false);
-      setAuthMode('signup');
+      setAuthMode('signin');
+      persistentRepo.saveActiveFarmer(null);
       localStorage.removeItem('smartfarmer_session');
     }
   }, []);
@@ -222,6 +406,7 @@ export default function App() {
   const handleSignOut = () => {
     setIsAuthenticated(false);
     setAuthMode('signup');
+    persistentRepo.saveActiveFarmer(null);
     localStorage.removeItem('smartfarmer_session');
     if (window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -235,46 +420,69 @@ export default function App() {
   const t = translations[lang] || translations.en;
   const [farmerActiveTab, setFarmerActiveTab] = useState<string>('dashboard');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [isMobileFrameView, setIsMobileFrameView] = useState<boolean>(true);
 
-  const [farmer, setFarmer] = useState<any>({
-    id: 'FR-AP-2026-000124',
-    name: 'Prudhvi Pavan',
-    mobile: '+91 9125421544',
-    district: 'Kakinada, East Godavari',
-    state: 'Andhra Pradesh',
-    landArea: '4.5 Acres (Verified)',
-    crops: 'Paddy (Grade A), Cotton',
-    bankAccount: 'State Bank of India (A/C: ****5512)',
-    ifsc: 'SBIN0001234'
+  const [farmer, setFarmer] = useState<any>(() => {
+    const saved = persistentRepo.getActiveFarmer();
+    if (saved) return saved;
+    return {
+      id: 'FR-AP-2026-000124',
+      farmerId: 'FR-AP-2026-000124',
+      name: 'Prudhvi Pavan',
+      mobile: '+91 9125421544',
+      district: 'Kakinada, East Godavari',
+      state: 'Andhra Pradesh',
+      landArea: '4.5 Acres (Verified)',
+      crops: 'Paddy (Grade A), Cotton',
+      bankAccount: 'State Bank of India (A/C: ****5512)',
+      ifsc: 'SBIN0001234'
+    };
   });
 
-  const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>({
-    bookingId: 'BK-2026-000845',
-    tokenId: 'PDC-774321',
-    farmerId: 'FMR-19',
-    centreName: 'Sri Lakshmi Procurement Centre',
-    cropName: 'Paddy (Grade A) (45 Qtl)',
-    bookingDate: '02/09/2026',
-    timeWindow: '09:00 AM - 11:00 AM',
-    expectedQuantityQuintals: 45,
-    status: 'CONFIRMED',
-    currentStage: 'WAITING',
-    qrPayload: JSON.stringify({
-      type: 'APMC_GATE_PASS',
+  const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(() => {
+    const saved = persistentRepo.getActiveBooking();
+    if (saved) return saved;
+    return {
+      bookingId: 'BK-2026-000845',
       tokenId: 'PDC-774321',
-      farmerId: 'FMR-19',
-      crop: 'Paddy (Grade A)',
-      qty: 45,
-      centre: 'PC-AP-VZM-0012',
-      date: '2026-09-02'
-    }),
-    farmersAhead: 1,
-    estimatedWaitMinutes: 12,
-    currentServedToken: 'PDC-A004',
-    mspRate: 2300,
-    estimatedPayout: 103500
+      farmerId: 'FR-AP-2026-000124',
+      centreName: 'Sri Lakshmi Procurement Centre',
+      cropName: 'Paddy (Grade A) (45 Qtl)',
+      bookingDate: '02/09/2026',
+      timeWindow: '09:00 AM - 11:00 AM',
+      expectedQuantityQuintals: 45,
+      status: 'CONFIRMED',
+      currentStage: 'WAITING',
+      qrPayload: JSON.stringify({
+        type: 'APMC_GATE_PASS',
+        tokenId: 'PDC-774321',
+        farmerId: 'FMR-19',
+        crop: 'Paddy (Grade A)',
+        qty: 45,
+        centre: 'PC-AP-VZM-0012',
+        date: '2026-09-02'
+      }),
+      farmersAhead: 1,
+      estimatedWaitMinutes: 12,
+      currentServedToken: 'PDC-A004',
+      mspRate: 2300,
+      estimatedPayout: 103500
+    };
   });
+
+  // Automatically sync state to persistent storage on every change
+  useEffect(() => {
+    if (farmer && farmer.mobile) {
+      persistentRepo.saveActiveFarmer(farmer);
+    }
+  }, [farmer]);
+
+  useEffect(() => {
+    persistentRepo.saveActiveBooking(activeBooking);
+  }, [activeBooking]);
+
+  useEffect(() => {
+    persistentRepo.saveProcurements(recentProcurements);
+  }, [recentProcurements]);
 
   // Booking Wizard
   const [wizardStep, setWizardStep] = useState<number>(1);
@@ -288,32 +496,67 @@ export default function App() {
   const [isBookingSubmitting, setIsBookingSubmitting] = useState<boolean>(false);
 
   // Bank & DBT
-  const [bankDetails, setBankDetails] = useState({
-    accountHolderName: 'Prudhvi',
-    bankName: 'State Bank of India',
-    accountNumber: '392810482910',
-    confirmAccountNumber: '392810482910',
-    ifscCode: 'SBIN0001234'
+  const [bankDetails, setBankDetails] = useState(() => {
+    const saved = persistentRepo.getActiveFarmer();
+    return {
+      accountHolderName: saved?.accountHolderName || saved?.name || 'Prudhvi Pavan',
+      bankName: saved?.bankName || 'State Bank of India',
+      accountNumber: saved?.accountNumber || '392810482910',
+      confirmAccountNumber: saved?.accountNumber || '392810482910',
+      ifscCode: saved?.ifscCode || 'SBIN0001234'
+    };
   });
 
   // Profile & GPS Location State
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
-  const [editFarmerData, setEditFarmerData] = useState({
-    name: farmer.name || 'Prudhvi Pavan',
-    mobile: farmer.mobile || '+91 9125421544',
-    district: farmer.district || 'Kakinada, East Godavari',
-    state: farmer.state || 'Andhra Pradesh',
-    landArea: farmer.landArea || '4.5 Acres (Verified)',
-    crops: farmer.crops || 'Paddy (Grade A), Cotton'
+  const [editFarmerData, setEditFarmerData] = useState(() => {
+    const saved = persistentRepo.getActiveFarmer();
+    return {
+      name: saved?.name || 'Prudhvi Pavan',
+      mobile: saved?.mobile || '+91 9125421544',
+      address: saved?.address || 'Salur, Andhra Pradesh',
+      email: saved?.email || 'farmer@kisan.gov.in',
+      district: saved?.district || 'Parvathipuram Manyam / Salur',
+      state: saved?.state || 'Andhra Pradesh',
+      landArea: saved?.landArea || '4.5 Acres (Verified)',
+      crops: saved?.crops || 'Paddy (Grade A), Cotton'
+    };
   });
-  // Real-Time GPS Geolocation Coordinates & AI State
-  const [farmerCoords, setFarmerCoords] = useState<{ lat: number; lng: number }>({ lat: 16.9800, lng: 82.2400 });
+
+  // Enterprise Acknowledgment Pop-up Modal State
+  const [appAckModal, setAppAckModal] = useState<{
+    isOpen: boolean;
+    type?: 'success' | 'error' | 'warning' | 'otp' | 'info';
+    badgeText?: string;
+    title: string;
+    message: string;
+    highlightText?: string;
+    confirmBtnText?: string;
+    secondaryBtnText?: string;
+    minDurationSeconds?: number;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  // Real-Time Address-Based Geolocation Coordinates
+  const initialResolvedLoc = resolveAddressToCoords(farmer?.address || farmer?.district || '', farmer?.state || '');
+  const [farmerCoords, setFarmerCoords] = useState<{ lat: number; lng: number }>(() => ({
+    lat: initialResolvedLoc.lat,
+    lng: initialResolvedLoc.lng
+  }));
   const [gpsActive, setGpsActive] = useState<boolean>(false);
   const [gpsDetecting, setGpsDetecting] = useState<boolean>(false);
-  const [gpsNearestStatus, setGpsNearestStatus] = useState<string>('');
+  const [gpsNearestStatus, setGpsNearestStatus] = useState<string>(
+    `Nearest Mandi mapped from registered address: ${initialResolvedLoc.locationName}`
+  );
 
   const requestUserLocation = () => {
     setGpsDetecting(true);
+    const fallbackLoc = resolveAddressToCoords(farmer?.address || farmer?.district || '', farmer?.state || '');
     if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -325,25 +568,42 @@ export default function App() {
           setGpsNearestStatus(t.gpsDetectedSuccess || 'GPS Location detected! Live coordinates mapped to nearest mandis.');
         },
         (err) => {
-          console.warn('Geolocation fallback:', err.message);
-          setFarmerCoords({ lat: 16.9800, lng: 82.2400 });
+          console.warn('Geolocation fallback to address:', err.message);
+          setFarmerCoords({ lat: fallbackLoc.lat, lng: fallbackLoc.lng });
           setGpsActive(true);
           setGpsDetecting(false);
-          setGpsNearestStatus(t.locationPermissionFallback || 'Using registered district GPS coordinates (Kakinada / East Godavari).');
+          setGpsNearestStatus(`Nearest Mandis mapped based on your address: ${fallbackLoc.locationName}`);
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
       );
     } else {
-      setFarmerCoords({ lat: 16.9800, lng: 82.2400 });
+      setFarmerCoords({ lat: fallbackLoc.lat, lng: fallbackLoc.lng });
       setGpsActive(true);
       setGpsDetecting(false);
-      setGpsNearestStatus(t.locationPermissionFallback || 'Using registered district GPS coordinates (Kakinada / East Godavari).');
+      setGpsNearestStatus(`Nearest Mandis mapped based on your address: ${fallbackLoc.locationName}`);
     }
   };
 
   useEffect(() => {
     requestUserLocation();
-  }, []);
+  }, [farmer?.address, farmer?.district]);
+
+  // Keep bankDetails and editFarmerData in sync when farmer state changes or reloads
+  useEffect(() => {
+    if (farmer) {
+      const loc = resolveAddressToCoords(farmer.address || farmer.district || '', farmer.state || '');
+      setFarmerCoords({ lat: loc.lat, lng: loc.lng });
+      if (farmer.bankName || farmer.accountNumber) {
+        setBankDetails({
+          accountHolderName: farmer.accountHolderName || farmer.name || 'Prudhvi Pavan',
+          bankName: farmer.bankName || 'State Bank of India',
+          accountNumber: farmer.accountNumber || '392810482910',
+          confirmAccountNumber: farmer.accountNumber || '392810482910',
+          ifscCode: farmer.ifscCode || 'SBIN0001234'
+        });
+      }
+    }
+  }, [farmer]);
 
   const centresList = MASTER_CENTRES.map((c) => {
     const dist = calculateHaversineKm(farmerCoords.lat, farmerCoords.lng, c.lat, c.lng);
@@ -359,7 +619,16 @@ export default function App() {
       districtLocalized: localizedDistrict,
       addressLocalized: localizedAddress
     };
-  }).sort((a, b) => b.aiScore - a.aiScore);
+  }).sort((a, b) => a.distanceKm - b.distanceKm); // Nearest first!
+
+  // Auto-select nearest centre if not chosen or changed
+  useEffect(() => {
+    if (centresList && centresList.length > 0) {
+      if (!centresList.some(c => c.centreId === selectedCentre)) {
+        setSelectedCentre(centresList[0].centreId);
+      }
+    }
+  }, [centresList[0]?.centreId]);
 
   const topRecommendedMandi = centresList[0];
 
@@ -374,11 +643,14 @@ export default function App() {
   const [grievanceCategory, setGrievanceCategory] = useState<string>('QUALITY_DISPUTE');
 
   // Master Bookings List for Farmer (Place, Timings, Crop, Quantity)
-  const [myBookingsList, setMyBookingsList] = useState<any[]>([
-    {
-      bookingId: 'BK-2026-000845',
-      tokenId: 'PDC-774321',
-      cropName: 'Paddy (Grade A)',
+  const [myBookingsList, setMyBookingsList] = useState<any[]>(() => {
+    const saved = persistentRepo.getMyBookings();
+    if (saved && saved.length > 0) return saved;
+    return [
+      {
+        bookingId: 'BK-2026-000845',
+        tokenId: 'PDC-774321',
+        cropName: 'Paddy (Grade A)',
       expectedQuantityQuintals: 45.0,
       centreName: 'Sri Lakshmi Procurement Centre #402',
       centreDistrict: 'West Godavari, AP',
@@ -426,7 +698,12 @@ export default function App() {
       estimatedPayout: 132400,
       qrPayload: JSON.stringify({ tokenId: 'PDC-541299', farmer: 'FMR-19', crop: 'Cotton' })
     }
-  ]);
+  ];
+});
+
+  useEffect(() => {
+    persistentRepo.saveMyBookings(myBookingsList);
+  }, [myBookingsList]);
 
   // Master Crops & Global Crop Catalog (DoCA 2026 Guaranteed MSP)
   const [cropsList, setCropsList] = useState<any[]>(() => {
@@ -582,6 +859,21 @@ export default function App() {
           if (data.currentStage) {
             setActiveBooking((prev) => (prev ? { ...prev, currentStage: data.currentStage } : null));
           }
+        }
+      });
+
+      // Connect dual-layer Realtime Sync Bus
+      realtimeSync.setPortal('farmer');
+      const unsubQueue = realtimeSync.subscribe('queue:update', (data: any) => {
+        if (data.bookingId && activeBooking && data.bookingId === activeBooking.bookingId) {
+          if (data.currentStage) {
+            setActiveBooking((prev) => (prev ? { ...prev, currentStage: data.currentStage } : null));
+          }
+        }
+      });
+      const unsubMsp = realtimeSync.subscribe('msp:update', (data: any) => {
+        if (data && Array.isArray(data)) {
+          setCropsList(data);
         }
       });
     } catch (e) {
@@ -768,326 +1060,19 @@ export default function App() {
   };
 
   // =============================================================
-  // RENDER RBAC AUTH LOGIN (EXACT MATCH OF SCREENSHOTS)
+  // RENDER GATEWAY PAGE (MULTI-LINGUAL, ROLE-BASED, TWILIO OTP)
   // =============================================================
   if (!isAuthenticated) {
     return (
-      <div className="auth-wrapper">
-        <div className="auth-card">
-          {/* Header */}
-          <div className="auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <FarmSolLogo size="md" showTagline={true} />
-            <div className="auth-badge" style={{ marginTop: 14 }}>
-              {t.portalBadge || 'NATIONAL AGRICULTURAL ACCESS PORTAL'}
-            </div>
-            <h1 className="auth-title" style={{ fontSize: '1.35rem', marginTop: 4 }}>{t.appTitle || 'Smart Procure'}</h1>
-            <p className="auth-subtitle">{t.authSubtitle || 'From Farm to Market, Made Smarter.'}</p>
-          </div>
-
-          {/* Multi-Lingual Quick Language Switcher Bar */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14, width: '100%' }}>
-            <button
-              type="button"
-              style={{
-                flex: 1,
-                padding: '6px 8px',
-                borderRadius: 20,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                border: lang === 'te' ? '2px solid #15803d' : '1px solid #cbd5e1',
-                background: lang === 'te' ? '#dcfce7' : '#ffffff',
-                color: lang === 'te' ? '#15803d' : '#475569',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setLang('te')}
-            >
-              తెలుగు (Telugu)
-            </button>
-            <button
-              type="button"
-              style={{
-                flex: 1,
-                padding: '6px 8px',
-                borderRadius: 20,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                border: lang === 'hi' ? '2px solid #15803d' : '1px solid #cbd5e1',
-                background: lang === 'hi' ? '#dcfce7' : '#ffffff',
-                color: lang === 'hi' ? '#15803d' : '#475569',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setLang('hi')}
-            >
-              हिंदी (Hindi)
-            </button>
-            <button
-              type="button"
-              style={{
-                flex: 1,
-                padding: '6px 8px',
-                borderRadius: 20,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                border: lang === 'en' ? '2px solid #15803d' : '1px solid #cbd5e1',
-                background: lang === 'en' ? '#dcfce7' : '#ffffff',
-                color: lang === 'en' ? '#15803d' : '#475569',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => setLang('en')}
-            >
-              English
-            </button>
-          </div>
-
-          {/* Main Sign In / Register Tabs */}
-          <div className="auth-main-tabs">
-            <button
-              className={`auth-main-tab ${authMode === 'signin' ? 'active' : ''}`}
-              onClick={() => setAuthMode('signin')}
-            >
-              {t.signIn || 'Sign In'}
-            </button>
-            <button
-              className={`auth-main-tab ${authMode === 'signup' ? 'active' : ''}`}
-              onClick={() => setAuthMode('signup')}
-            >
-              {t.signUp || 'Sign Up / Register'}
-            </button>
-          </div>
-
-          {/* Role Switcher Label & Buttons */}
-          <div className="role-label">{t.signInAs || 'SIGN IN AS'}</div>
-          <div className="role-selector">
-            <button
-              className={`role-btn ${userRole === 'farmer' ? 'active-farmer' : ''}`}
-              onClick={() => { setUserRole('farmer'); setIsAuthenticated(false); }}
-            >
-              {t.farmer || 'Farmer'}
-            </button>
-            <button
-              className={`role-btn ${userRole === 'operator' ? 'active-operator' : ''}`}
-              onClick={() => { setUserRole('operator'); setIsAuthenticated(false); }}
-            >
-              {t.operator || 'Operator'}
-            </button>
-            <button
-              className={`role-btn ${userRole === 'admin' ? 'active-admin' : ''}`}
-              onClick={() => { setUserRole('admin'); setIsAuthenticated(false); }}
-            >
-              {t.admin || 'Admin'}
-            </button>
-          </div>
-
-          {/* Role: FARMER (Phone + OTP) */}
-          {userRole === 'farmer' && (
-            <div>
-              {!otpSent ? (
-                <div>
-                  <label className="form-label-auth">
-                    {t.mobileNumber || 'Mobile Number'} <span>*</span>
-                  </label>
-                  <div className="phone-input-group">
-                    <div className="country-code">
-                      +91
-                    </div>
-                    <input
-                      type="tel"
-                      className="phone-input-field"
-                      value={farmerMobile}
-                      onChange={(e) => setFarmerMobile(e.target.value)}
-                      placeholder={lang === 'te' ? '10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి' : lang === 'hi' ? '10 अंकों का मोबाइल नंबर दर्ज करें' : 'Enter 10 digit mobile'}
-                      maxLength={10}
-                    />
-                  </div>
-                  <button
-                    className="btn-login-green"
-                    style={{ marginTop: 20 }}
-                    onClick={() => setOtpSent(true)}
-                    disabled={farmerMobile.length < 10}
-                  >
-                    {t.sendOtp || 'Send OTP'}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {lang === 'te' ? `+91 *******${farmerMobile.slice(-3)} నంబరుకు OTP విజయవంతంగా పంపబడింది` : lang === 'hi' ? `+91 *******${farmerMobile.slice(-3)} पर ओटीपी सफलतापूर्वक भेजा गया` : `OTP sent successfully to +91 *******${farmerMobile.slice(-3)}`}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-                    <label className="form-label-auth" style={{ margin: 0 }}>
-                      {t.enterOtp || 'Enter OTP'}
-                    </label>
-                    <span
-                      style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 700, cursor: 'pointer' }}
-                      onClick={() => setOtpSent(false)}
-                    >
-                      {lang === 'te' ? 'నంబర్ మార్చండి' : lang === 'hi' ? 'नंबर बदलें' : 'Change Number'}
-                    </span>
-                  </div>
-
-                  <div className="otp-box-group">
-                    {otpValues.map((val, idx) => (
-                      <input
-                        key={idx}
-                        id={`otp-${idx}`}
-                        className="otp-input"
-                        type="text"
-                        maxLength={1}
-                        value={val}
-                        onChange={(e) => {
-                          const newVals = [...otpValues];
-                          newVals[idx] = e.target.value;
-                          setOtpValues(newVals);
-                          if (e.target.value && idx < 5) {
-                            document.getElementById(`otp-${idx + 1}`)?.focus();
-                          }
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <button className="btn-login-green" onClick={handleLoginSubmit}>
-                    {authLoading ? (lang === 'te' ? 'ధృవీకరిస్తోంది...' : lang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...') : (t.verifyOtp || 'Verify & Continue')}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Role: OPERATOR (Email + Password + Password Strength) */}
-          {userRole === 'operator' && (
-            <div>
-              <div style={{ marginBottom: 14 }}>
-                <label className="form-label-auth">
-                  Email Address <span>*</span>
-                </label>
-                <input
-                  type="email"
-                  className="input-box-auth"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="name@apmc.gov.in"
-                />
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label className="form-label-auth">
-                  Password <span>*</span>
-                </label>
-                <div className="password-input-wrap">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="input-box-auth"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Password Strength Box */}
-              <div className="password-strength-box">
-                <div className="strength-header">
-                  <span style={{ color: 'var(--text-muted)' }}>Password Strength:</span>
-                  <span style={{ color: '#16a34a' }}>VERY STRONG</span>
-                </div>
-                <div className="strength-bars">
-                  <div className="strength-bar-fill"></div>
-                </div>
-                <div className="strength-checklist">
-                  <span>✓ 8+ chars</span>
-                  <span>✓ Upper & lower</span>
-                  <span>✓ Number (0-9)</span>
-                  <span>✓ Symbol (@#$)</span>
-                </div>
-              </div>
-
-              {/* Notice Pill */}
-              <div className="auth-notice-pill">
-                <span>Procurement Operator accounts require verified SMTP email credentials.</span>
-              </div>
-
-              <button className="btn-login-green" onClick={handleLoginSubmit}>
-                {authLoading ? 'Signing in...' : 'Login'}
-              </button>
-            </div>
-          )}
-
-          {/* Role: ADMIN (Email + Password + Admin Encrypted Gateway) */}
-          {userRole === 'admin' && (
-            <div>
-              <div style={{ marginBottom: 14 }}>
-                <label className="form-label-auth">
-                  Email Address <span>*</span>
-                </label>
-                <input
-                  type="email"
-                  className="input-box-auth"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="admin@doca.gov.in"
-                />
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label className="form-label-auth">
-                  Password <span>*</span>
-                </label>
-                <div className="password-input-wrap">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="input-box-auth"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Password Strength Box */}
-              <div className="password-strength-box">
-                <div className="strength-header">
-                  <span style={{ color: 'var(--text-muted)' }}>Password Strength:</span>
-                  <span style={{ color: '#16a34a' }}>VERY STRONG</span>
-                </div>
-                <div className="strength-bars">
-                  <div className="strength-bar-fill"></div>
-                </div>
-                <div className="strength-checklist">
-                  <span>8+ chars</span>
-                  <span>Upper & lower</span>
-                  <span>Number (0-9)</span>
-                  <span>Symbol (@#$)</span>
-                </div>
-              </div>
-
-              {/* Admin Gateway Notice */}
-              <div className="auth-notice-pill" style={{ background: '#f1f5f9' }}>
-                <span style={{ color: '#273b64', fontWeight: 600 }}>256-Bit SSL Encrypted Admin Gateway</span>
-              </div>
-
-              <button className="btn-login-admin" onClick={handleLoginSubmit}>
-                {authLoading ? 'Verifying...' : 'Login'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <GatewayPage
+        lang={lang}
+        onLanguageChange={(newLang) => setLang(newLang)}
+        onFarmerAuthenticated={(farmerData) => {
+          setFarmer(farmerData);
+          setIsAuthenticated(true);
+          persistentRepo.saveActiveFarmer(farmerData);
+        }}
+      />
     );
   }
 
@@ -1108,26 +1093,6 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {userRole === 'farmer' && (
-            <button
-              style={{
-                background: isMobileFrameView ? '#15803d' : '#334155',
-                color: '#ffffff',
-                border: 'none',
-                padding: '4px 10px',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-              onClick={() => setIsMobileFrameView(!isMobileFrameView)}
-            >
-              {isMobileFrameView ? 'Smartphone App View' : 'Expanded View'}
-            </button>
-          )}
           <button
             style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem' }}
             onClick={handleSignOut}
@@ -1138,161 +1103,363 @@ export default function App() {
       </div>
 
       {/* ------------------------------------------------------- */}
-      {/* 1. FARMER ROLE WORKSPACE (PAGES 2-9 OF PDF)             */}
+      {/* 1. FARMER ROLE WORKSPACE — WIDESCREEN NATIONAL WEB PORTAL */}
       {/* ------------------------------------------------------- */}
-      {userRole === 'farmer' && isMobileFrameView && (
-        <div className="mobile-app-root" style={{ flex: 1, padding: '16px 0' }}>
-          <div className="phone-chassis">
-            {/* Notch / Dynamic Island */}
-            <div className="mobile-notch">
-              <div className="mobile-camera-dot"></div>
-            </div>
-
-            {/* Top Phone Status Bar */}
-            <div className="phone-status-bar">
-              <span>19:14</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#166534', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>5G</span>
-                <span>98%</span>
+      {userRole === 'farmer' && (
+        <div className="farmer-portal-layout">
+          {/* Modern Fixed Left Sidebar Navigation */}
+          <aside className="portal-sidebar-left">
+            <div className="sidebar-header-brand">
+              <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 42, height: 42, borderRadius: 10, objectFit: 'contain', border: '1.5px solid #dcfce7' }} />
+              <div>
+                <h1 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#14532d', margin: 0, letterSpacing: '-0.3px', lineHeight: 1.1 }}>
+                  FARMSOL
+                </h1>
+                <div style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 800, marginTop: 2 }}>
+                  NATIONAL FARMER PORTAL
+                </div>
               </div>
             </div>
 
-            {/* REAL-TIME IN-APP SMS PUSH NOTIFICATION BANNER */}
-            {activeSmsAlert && (
+            <div className="sidebar-farmer-card">
+              <div className="user-avatar" style={{ width: 36, height: 36, fontSize: '0.9rem', flexShrink: 0 }}>
+                {farmer?.name?.charAt(0) || 'P'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {farmer?.name}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }}></span>
+                  Aadhaar Verified
+                </div>
+              </div>
+            </div>
+
+            {/* Vertical Menu Buttons */}
+            <div className="sidebar-nav-menu">
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('dashboard')}
+              >
+                <span>{t.dashboard || 'Dashboard Overview'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'book' ? 'active' : ''}`}
+                onClick={() => { setFarmerActiveTab('book'); setWizardStep(1); }}
+              >
+                <span>{t.bookSlot || 'Book Procurement Slot'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'token' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('token')}
+              >
+                <span>{t.myPass || 'Digital Gate Pass & QR'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'queue' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('queue')}
+              >
+                <span>{t.liveQueue || 'Live Queue & ETA'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'prices' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('prices')}
+              >
+                <span>{t.prices || 'Govt MSP Rates'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'payments' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('payments')}
+              >
+                <span>{t.history || 'DBT Payments & Passbook'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'centres' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('centres')}
+              >
+                <span>{t.centres || 'Mandi Centres & GPS'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'mybookings' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('mybookings')}
+              >
+                <span>{t.myBookings || 'My Bookings'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'notifications' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('notifications')}
+              >
+                <span>{t.notifications || 'Alerts & SMS Log'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'profile' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('profile')}
+              >
+                <span className="sidebar-nav-icon">👤</span>
+                <span>{t.profile || 'Profile & Bank A/C'}</span>
+              </button>
+              <button
+                className={`sidebar-nav-item ${farmerActiveTab === 'feedback' ? 'active' : ''}`}
+                onClick={() => setFarmerActiveTab('feedback')}
+              >
+                <span className="sidebar-nav-icon">💬</span>
+                <span>{t.feedback || 'Feedback & Grievance'}</span>
+              </button>
+            </div>
+
+            {/* Sidebar Footer Controls */}
+            <div className="sidebar-footer">
+              <button
+                className="lang-selector-btn"
+                style={{ width: '100%', padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', fontWeight: 700, borderRadius: 10 }}
+                onClick={handleVoiceReadout}
+                title={t.voicePrompt || 'Voice Assistance'}
+              >
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: 3 }}>AUDIO</span>
+                {isSpeaking ? '...' : lang === 'te' ? 'వాయిస్ సహాయం' : lang === 'hi' ? 'आवाज़ सहायता' : 'Voice Assistant'}
+              </button>
+
+              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 10, padding: 3, border: '1px solid #e2e8f0', width: '100%' }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '5px 4px',
+                    fontSize: '0.74rem',
+                    borderRadius: 7,
+                    border: 'none',
+                    fontWeight: 800,
+                    background: lang === 'te' ? '#15803d' : 'transparent',
+                    color: lang === 'te' ? '#ffffff' : '#475569',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setLang('te')}
+                >
+                  తెలుగు
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '5px 4px',
+                    fontSize: '0.74rem',
+                    borderRadius: 7,
+                    border: 'none',
+                    fontWeight: 800,
+                    background: lang === 'hi' ? '#15803d' : 'transparent',
+                    color: lang === 'hi' ? '#ffffff' : '#475569',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setLang('hi')}
+                >
+                  हिंदी
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '5px 4px',
+                    fontSize: '0.74rem',
+                    borderRadius: 7,
+                    border: 'none',
+                    fontWeight: 800,
+                    background: lang === 'en' ? '#15803d' : 'transparent',
+                    color: lang === 'en' ? '#ffffff' : '#475569',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setLang('en')}
+                >
+                  English
+                </button>
+              </div>
+
+              <button
+                type="button"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  borderRadius: 10,
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+                onClick={handleSignOut}
+              >
+                <span>🚪</span> Sign Out Portal
+              </button>
+            </div>
+          </aside>
+
+          {/* Main Panel Content Area */}
+          <div className="portal-main-panel">
+            {/* Top Ticker */}
+            <div className="portal-top-ticker">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#4ade80' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                  <strong>APMC Mandi Network Active</strong>
+                </span>
+                <span>•</span>
+                <span><strong>Salur APMC Yard #601:</strong> Live Operations</span>
+                <span>•</span>
+                <span><strong>Guaranteed MSP:</strong> Paddy Grade A ₹2,320/Qtl | Cotton ₹6,620/Qtl</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: '#cbd5e1' }}>Kisan Helpline: <strong>1800-180-1551</strong></span>
+                <span style={{ background: '#16a34a', color: '#ffffff', padding: '1px 6px', borderRadius: 4, fontSize: '0.68rem', fontWeight: 800 }}>
+                  GoI Verified
+                </span>
+              </div>
+            </div>
+
+            {/* Top Header inside main panel */}
+            <header className="portal-main-header">
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                  {farmerActiveTab === 'dashboard' && (t.dashboard || 'Dashboard Overview')}
+                  {farmerActiveTab === 'book' && (t.bookSlot || 'Book Procurement Slot')}
+                  {farmerActiveTab === 'token' && (t.myPass || 'Digital Gate Pass & QR')}
+                  {farmerActiveTab === 'queue' && (t.liveQueue || 'Live Queue & ETA')}
+                  {farmerActiveTab === 'prices' && (t.prices || 'Govt MSP Rates')}
+                  {farmerActiveTab === 'payments' && (t.history || 'DBT Payments & Passbook')}
+                  {farmerActiveTab === 'centres' && (t.centres || 'Mandi Centres & GPS')}
+                  {farmerActiveTab === 'mybookings' && (t.myBookings || 'My Bookings')}
+                  {farmerActiveTab === 'notifications' && (t.notifications || 'Alerts & SMS Log')}
+                  {farmerActiveTab === 'profile' && (t.profile || 'Profile & Bank A/C')}
+                  {farmerActiveTab === 'feedback' && (t.feedback || 'Feedback & Grievances')}
+                </h2>
+                <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, marginTop: 2 }}>
+                  Ministry of Consumer Affairs, Food & Public Distribution • Smart Procurement
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '0.74rem', background: '#dcfce7', color: '#15803d', padding: '4px 10px', borderRadius: 9999, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }}></span>
+                  Realtime Sync Active
+                </span>
+              </div>
+            </header>
+
+            {/* Main Web Portal Content Body */}
+            <main className="portal-content-wrapper">
+              {/* Real-time Push & SMS Alert Banner */}
+              {activeSmsAlert && (
               <div
                 className="sms-push-banner"
                 style={{
-                  margin: '8px 10px 4px',
+                  marginBottom: 20,
                   background: activeSmsAlert.status === 'COMPLETED' ? '#ecfdf5' : activeSmsAlert.status === 'PENDING' ? '#fffbeb' : '#f0fdf4',
                   border: `1.5px solid ${activeSmsAlert.status === 'COMPLETED' ? '#10b981' : activeSmsAlert.status === 'PENDING' ? '#f59e0b' : '#15803d'}`,
-                  borderRadius: 12,
-                  padding: '9px 12px',
-                  boxShadow: '0 8px 20px -4px rgba(0,0,0,0.15)',
-                  position: 'relative',
-                  zIndex: 20
+                  borderRadius: 14,
+                  padding: '12px 20px',
+                  boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 16
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{
-                      fontSize: '0.64rem',
-                      fontWeight: 800,
-                      background: activeSmsAlert.status === 'COMPLETED' ? '#10b981' : activeSmsAlert.status === 'PENDING' ? '#f59e0b' : '#15803d',
-                      color: '#ffffff',
-                      padding: '1px 6px',
-                      borderRadius: 4
-                    }}>
-                      SMS • {activeSmsAlert.sender}
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{activeSmsAlert.timestamp}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    background: activeSmsAlert.status === 'COMPLETED' ? '#10b981' : activeSmsAlert.status === 'PENDING' ? '#f59e0b' : '#15803d',
+                    color: '#ffffff',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    letterSpacing: '0.5px'
+                  }}>
+                    OFFICIAL SMS • {activeSmsAlert.sender}
+                  </span>
+                  <div style={{ fontSize: '0.88rem', color: '#0f172a', fontWeight: 600 }}>
+                    {activeSmsAlert.message}
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{activeSmsAlert.timestamp}</span>
                   <button
                     type="button"
-                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, padding: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 700 }}
                     onClick={() => setActiveSmsAlert(null)}
                   >
                     ✕
                   </button>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#0f172a', lineHeight: 1.38, fontWeight: 600 }}>
-                  {activeSmsAlert.message}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, fontSize: '0.68rem', color: '#64748b' }}>
-                  <span>{t.smsDelivered || 'Delivered to registered mobile'}</span>
-                  <span style={{
-                    fontWeight: 800,
-                    color: activeSmsAlert.status === 'COMPLETED' ? '#047857' : activeSmsAlert.status === 'PENDING' ? '#b45309' : '#15803d'
-                  }}>
-                    ● {activeSmsAlert.status === 'COMPLETED' ? (t.paymentCompleted || 'PAID') : activeSmsAlert.status === 'PENDING' ? (t.paymentPending || 'PENDING') : 'ALERT'}
-                  </span>
-                </div>
               </div>
             )}
 
-            {/* Mobile App Bar Header */}
-            <div className="mobile-app-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img
-                  src="/farmsol_logo.jpg"
-                  alt="FARMSOL"
-                  style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #16a34a' }}
-                />
+            {/* 4 High-Impact KPI Statistics Cards (Desktop Overview) */}
+            <div className="portal-stats-grid">
+              <div className="portal-stat-card">
+                <div className="portal-stat-icon" style={{ background: '#dcfce7', color: '#15803d' }}>₹</div>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#15803d', lineHeight: 1 }}>FARMSOL</div>
-                  <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 600 }}>{t.mobileKisanApp || 'Mobile Kisan App'}</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                    {t.guaranteedEarnings || 'GUARANTEED DBT PAYOUTS'}
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#15803d' }}>
+                    ₹2,87,500
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700 }}>
+                    Direct Bank Transfer (100% MSP Credited)
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button
-                  className="lang-selector-btn"
-                  style={{ padding: '3px 6px', fontSize: '0.68rem' }}
-                  onClick={handleVoiceReadout}
-                  title={t.voicePrompt || 'Voice Assistance'}
-                >
-                  {isSpeaking ? '...' : lang === 'te' ? 'వాయిస్' : lang === 'hi' ? 'आवाज़' : 'Voice'}
-                </button>
-
-                <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 16, padding: '2px', border: '1px solid #e2e8f0' }}>
-                  <button
-                    type="button"
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '0.68rem',
-                      borderRadius: 12,
-                      border: 'none',
-                      fontWeight: 800,
-                      background: lang === 'te' ? '#15803d' : 'transparent',
-                      color: lang === 'te' ? '#ffffff' : '#475569',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => setLang('te')}
-                  >
-                    తెలుగు
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '0.68rem',
-                      borderRadius: 12,
-                      border: 'none',
-                      fontWeight: 800,
-                      background: lang === 'hi' ? '#15803d' : 'transparent',
-                      color: lang === 'hi' ? '#ffffff' : '#475569',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => setLang('hi')}
-                  >
-                    हिंदी
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '0.68rem',
-                      borderRadius: 12,
-                      border: 'none',
-                      fontWeight: 800,
-                      background: lang === 'en' ? '#15803d' : 'transparent',
-                      color: lang === 'en' ? '#ffffff' : '#475569',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => setLang('en')}
-                  >
-                    EN
-                  </button>
+              <div className="portal-stat-card">
+                <div className="portal-stat-icon" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 900, fontSize: '0.68rem', letterSpacing: '0.5px' }}>PASS</div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                    {t.activeToken || 'ACTIVE GATE PASS TOKEN'}
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#2563eb' }}>
+                    {activeBooking ? activeBooking.tokenId : 'No Active Pass'}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                    {activeBooking ? `${activeBooking.cropName} • ${activeBooking.expectedQuantityQuintals} Qtl` : 'Click Book Slot to schedule'}
+                  </div>
                 </div>
+              </div>
 
-                <div className="user-avatar" style={{ width: 26, height: 26, fontSize: '0.72rem' }}>
-                  {farmer?.name?.charAt(0) || 'P'}
+              <div className="portal-stat-card">
+                <div className="portal-stat-icon" style={{ background: '#fef3c7', color: '#d97706', fontWeight: 900, fontSize: '0.68rem', letterSpacing: '0.5px' }}>ETA</div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                    {t.queueWait || 'LIVE QUEUE POSITION'}
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#d97706' }}>
+                    {activeBooking ? `${activeBooking.farmersAhead} Ahead • ~${activeBooking.estimatedWaitMinutes}m` : '0 in Queue'}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: 700 }}>
+                    Serving Token: {activeBooking?.currentServedToken || 'PDC-A004'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="portal-stat-card">
+                <div className="portal-stat-icon" style={{ background: '#f1f5f9', color: '#0f172a', fontWeight: 900, fontSize: '0.68rem', letterSpacing: '0.5px' }}>MANDI</div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                    {t.mandiStatus || 'MANDI OPERATIONAL STATUS'}
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0f172a' }}>
+                    AMC Guntur #402
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700 }}>
+                    ● 3 Active Weighbridges • Low Congestion
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Scrollable Mobile Content */}
-            <div className="mobile-scroll-content">
-              <div className="content-body" style={{ padding: 0 }}>
+            <div className="content-body" style={{ padding: 0 }}>
                 {farmerActiveTab === 'dashboard' && (
                   <div>
                     <div className="dashboard-greeting">
@@ -1828,7 +1995,7 @@ export default function App() {
                             <input
                               type="text"
                               className="form-control-custom"
-                              placeholder={lang === 'te' ? '🔍 ఏదైనా పంట పేరును శోధించండి...' : lang === 'hi' ? '🔍 किसी भी फसल का नाम खोजें...' : '🔍 Search any crop name...'}
+                              placeholder={lang === 'te' ? 'ఏదైనా పంట పేరును శోధించండి...' : lang === 'hi' ? 'किसी भी फसल का नाम खोजें...' : 'Search any crop name...'}
                               value={cropSearchQuery}
                               onChange={(e) => setCropSearchQuery(e.target.value)}
                               style={{ fontSize: '0.82rem', padding: '9px 12px' }}
@@ -1871,8 +2038,8 @@ export default function App() {
                               <input
                                 type="number"
                                 className="form-control-custom"
-                                value={selectedQty}
-                                onChange={(e) => setSelectedQty(Math.max(1, Number(e.target.value)))}
+                                value={selectedQty || ''}
+                                onChange={(e) => setSelectedQty(e.target.value ? Number(e.target.value) : 0)}
                                 min={1}
                               />
                             </div>
@@ -2368,7 +2535,7 @@ export default function App() {
                       </p>
                     </div>
                     <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '6px 14px', borderRadius: 20, fontSize: '0.78rem', color: '#047857', fontWeight: 700 }}>
-                      🏦 {bankDetails.bankName} (****{bankDetails.accountNumber.slice(-4)})
+                      [BANK] {bankDetails.bankName} (****{bankDetails.accountNumber.slice(-4)})
                     </div>
                   </div>
 
@@ -2661,12 +2828,14 @@ export default function App() {
                         onClick={() => {
                           if (!isEditingProfile) {
                             setEditFarmerData({
-                              name: farmer.name,
-                              mobile: farmer.mobile,
-                              district: farmer.district,
-                              state: farmer.state,
-                              landArea: farmer.landArea,
-                              crops: farmer.crops
+                              name: farmer.name || '',
+                              mobile: farmer.mobile || '',
+                              address: farmer.address || '',
+                              email: farmer.email || '',
+                              district: farmer.district || '',
+                              state: farmer.state || 'Andhra Pradesh',
+                              landArea: farmer.landArea || '4.5',
+                              crops: farmer.crops || 'Paddy (Grade A)'
                             });
                           }
                           setIsEditingProfile(!isEditingProfile);
@@ -2681,9 +2850,14 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18, marginBottom: 20 }}>
                           <div className="detail-item-col"><span className="detail-label">{t.farmerNameLabel || 'FULL NAME'}</span><span className="detail-val">{farmer?.name}</span></div>
                           <div className="detail-item-col"><span className="detail-label">{t.mobileNoLabel || 'MOBILE'}</span><span className="detail-val">{farmer?.mobile}</span></div>
-                          <div className="detail-item-col"><span className="detail-label">{t.districtStateLabel || 'DISTRICT & STATE'}</span><span className="detail-val">{farmer?.district}, {farmer?.state}</span></div>
+                          <div className="detail-item-col" style={{ gridColumn: 'span 2' }}>
+                            <span className="detail-label">COMPLETE RESIDENTIAL ADDRESS</span>
+                            <span className="detail-val">{farmer?.address || 'Salur, Parvathipuram Manyam, Andhra Pradesh'}</span>
+                          </div>
+                          <div className="detail-item-col"><span className="detail-label">{t.districtStateLabel || 'DISTRICT & STATE'}</span><span className="detail-val">{farmer?.district}, {farmer?.state || 'Andhra Pradesh'}</span></div>
+                          <div className="detail-item-col"><span className="detail-label">EMAIL ADDRESS</span><span className="detail-val">{farmer?.email || `${farmer?.mobile?.replace(/\D/g, '') || 'farmer'}@kisan.gov.in`}</span></div>
                           <div className="detail-item-col"><span className="detail-label">{t.landAreaLabel || 'LAND AREA'}</span><span className="detail-val">{farmer?.landArea}</span></div>
-                          <div className="detail-item-col" style={{ gridColumn: 'span 2' }}><span className="detail-label">{t.registeredCropsLabel || 'REGISTERED CROPS'}</span><span className="detail-val">{farmer?.crops}</span></div>
+                          <div className="detail-item-col"><span className="detail-label">{t.registeredCropsLabel || 'REGISTERED CROPS'}</span><span className="detail-val">{farmer?.crops}</span></div>
                         </div>
 
                         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
@@ -2703,9 +2877,26 @@ export default function App() {
                           <div><label className="input-label">{t.farmerNameLabel || 'Full Name'} *</label><input type="text" className="form-control-custom" value={editFarmerData.name} onChange={(e) => setEditFarmerData({ ...editFarmerData, name: e.target.value })} /></div>
                           <div><label className="input-label">{t.mobileNoLabel || 'Mobile Number'} *</label><input type="text" className="form-control-custom" value={editFarmerData.mobile} onChange={(e) => setEditFarmerData({ ...editFarmerData, mobile: e.target.value })} /></div>
                         </div>
+                        <div style={{ marginBottom: 14 }}>
+                          <label className="input-label">Complete Residential Address (Street, Village/Town, Mandal, PIN) *</label>
+                          <input
+                            type="text"
+                            className="form-control-custom"
+                            value={editFarmerData.address}
+                            onChange={(e) => setEditFarmerData({ ...editFarmerData, address: e.target.value })}
+                            placeholder="e.g. D.No 2-45, Main Road, Salur, Parvathipuram Manyam - 535591"
+                          />
+                          <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: 4, fontWeight: 600 }}>
+                            Nearest APMC Mandi will be dynamically calculated using this address.
+                          </div>
+                        </div>
                         <div className="form-grid-2" style={{ marginBottom: 14 }}>
                           <div><label className="input-label">{t.districtStateLabel || 'District & State'} *</label><input type="text" className="form-control-custom" value={editFarmerData.district} onChange={(e) => setEditFarmerData({ ...editFarmerData, district: e.target.value })} /></div>
+                          <div><label className="input-label">Email Address *</label><input type="email" className="form-control-custom" value={editFarmerData.email} onChange={(e) => setEditFarmerData({ ...editFarmerData, email: e.target.value })} /></div>
+                        </div>
+                        <div className="form-grid-2" style={{ marginBottom: 14 }}>
                           <div><label className="input-label">{t.landAreaLabel || 'Land Area (Acres)'} *</label><input type="text" className="form-control-custom" value={editFarmerData.landArea} onChange={(e) => setEditFarmerData({ ...editFarmerData, landArea: e.target.value })} /></div>
+                          <div><label className="input-label">Registered Crops *</label><input type="text" className="form-control-custom" value={editFarmerData.crops} onChange={(e) => setEditFarmerData({ ...editFarmerData, crops: e.target.value })} /></div>
                         </div>
 
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a', margin: '18px 0 12px 0', borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>{t.accountDetails || 'Edit Aadhaar DBT Bank Account Details'}</h4>
@@ -2723,17 +2914,62 @@ export default function App() {
                           <button
                             className="btn-primary-block"
                             style={{ width: 'auto', padding: '10px 24px' }}
-                            onClick={() => {
-                              setFarmer({
+                            onClick={async () => {
+                              const updatedProfile = {
                                 ...farmer,
-                                name: editFarmerData.name,
-                                mobile: editFarmerData.mobile,
-                                district: editFarmerData.district,
-                                landArea: editFarmerData.landArea
-                              });
+                                name: editFarmerData.name.trim(),
+                                mobile: editFarmerData.mobile.trim(),
+                                address: editFarmerData.address.trim(),
+                                email: editFarmerData.email.trim(),
+                                district: editFarmerData.district.trim(),
+                                state: editFarmerData.state || farmer.state || 'Andhra Pradesh',
+                                landArea: editFarmerData.landArea,
+                                crops: editFarmerData.crops,
+                                accountHolderName: bankDetails.accountHolderName.trim(),
+                                bankName: bankDetails.bankName.trim(),
+                                accountNumber: bankDetails.accountNumber.trim(),
+                                ifscCode: bankDetails.ifscCode.trim(),
+                                bankAccountRef: `${bankDetails.bankName} (A/C: ****${bankDetails.accountNumber.slice(-4)})`,
+                                updatedAt: new Date().toISOString()
+                              };
+
+                              setFarmer(updatedProfile);
+                              persistentRepo.saveActiveFarmer(updatedProfile);
+
+                              // Re-resolve address to coordinates so nearest Mandi updates immediately!
+                              const newLoc = resolveAddressToCoords(updatedProfile.address, updatedProfile.district);
+                              setFarmerCoords({ lat: newLoc.lat, lng: newLoc.lng });
+                              setGpsNearestStatus(`Nearest Mandis mapped based on your address: ${newLoc.locationName}`);
+
+                              // Sync to backend persistent store
+                              try {
+                                await fetch(`${API_BASE}/auth/farmer/profile`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify(updatedProfile)
+                                });
+                              } catch (e) {
+                                console.warn('Backend profile sync:', e);
+                              }
+
                               setIsEditingProfile(false);
                               confetti({ particleCount: 60, spread: 60 });
-                              alert('Farmer profile and Aadhaar DBT bank account details updated successfully!');
+
+                              // Trigger AcknowledgeModal (stays at least 2 seconds or until user clicks OK)
+                              setAppAckModal({
+                                isOpen: true,
+                                type: 'success',
+                                badgeText: '[PROFILE & DBT ACCOUNT SAVED]',
+                                title: lang === 'te' ? 'ప్రొఫైల్ విజయవంతంగా నవీకరించబడింది' : lang === 'hi' ? 'प्रोफाइल सफलतापूर्वक अपडेट किया गया' : 'Profile & Bank Details Saved',
+                                message: lang === 'te'
+                                  ? 'మీ వ్యక్తిగత వివరాలు, చిరునామా మరియు ఆధార్ DBT బ్యాంక్ ఖాతా వివరాలు శాశ్వతంగా భద్రపరచబడ్డాయి. పేజీని రీఫ్రెష్ చేసినా ఈ కొత్త వివరాలు చెరిగిపోవు.'
+                                  : `Your personal identity, residential address (${updatedProfile.address}), and Aadhaar DBT bank account (A/C: ****${bankDetails.accountNumber.slice(-4)}) have been permanently saved in both local storage and the central ministry database.\n\nAll changes will persist permanently across page refreshes.`,
+                                confirmBtnText: 'OK / ACKNOWLEDGE',
+                                minDurationSeconds: 2,
+                                onConfirm: () => {
+                                  setAppAckModal(prev => ({ ...prev, isOpen: false }));
+                                }
+                              });
                             }}
                           >
                             {t.saveProfile || 'Save Profile & Bank Details'}
@@ -2797,73 +3033,7 @@ export default function App() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Fixed Mobile Bottom Navigation Bar */}
-          <div className="mobile-bottom-nav" style={{ justifyContent: 'space-around', overflowX: 'auto' }}>
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('dashboard')}
-            >
-              <span>{t.home || 'Home'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'book' ? 'active' : ''}`}
-              onClick={() => { setFarmerActiveTab('book'); setWizardStep(1); }}
-            >
-              <span>{t.bookSlot || 'Book'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'centres' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('centres')}
-            >
-              <span>{t.centres || 'Maps'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'mybookings' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('mybookings')}
-            >
-              <span>{t.myBookings || 'Bookings'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'token' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('token')}
-            >
-              <span>{t.myPass || 'Pass'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'prices' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('prices')}
-            >
-              <span>{t.prices || 'Prices'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'notifications' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('notifications')}
-            >
-              <span>{t.notifications || 'Alerts'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'payments' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('payments')}
-            >
-              <span>{t.history || 'Passbook'}</span>
-            </button>
-
-            <button
-              className={`mobile-nav-btn ${farmerActiveTab === 'profile' ? 'active' : ''}`}
-              onClick={() => setFarmerActiveTab('profile')}
-            >
-              <span>{t.profile || 'Profile'}</span>
-            </button>
-          </div>
+          </main>
         </div>
       </div>
       )}
@@ -2964,6 +3134,20 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Enterprise Acknowledgment Pop-up Modal */}
+      <AcknowledgeModal
+        isOpen={appAckModal.isOpen}
+        type={appAckModal.type}
+        badgeText={appAckModal.badgeText}
+        title={appAckModal.title}
+        message={appAckModal.message}
+        confirmBtnText={appAckModal.confirmBtnText}
+        secondaryBtnText={appAckModal.secondaryBtnText}
+        minDurationSeconds={appAckModal.minDurationSeconds}
+        onConfirm={appAckModal.onConfirm}
+        onClose={() => setAppAckModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
