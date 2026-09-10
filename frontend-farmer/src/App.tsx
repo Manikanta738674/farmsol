@@ -9,6 +9,8 @@ import { realtimeSync } from './utils/realtimeSync';
 import { persistentRepo } from './utils/persistentRepo';
 import { GatewayPage } from './components/GatewayPage';
 import { AcknowledgeModal } from './components/AcknowledgeModal';
+import { OperatorPortalView } from './components/OperatorPortalView';
+import { AdminPortalView } from './components/AdminPortalView';
 
 const getHost = () => {
   if (typeof window !== 'undefined') {
@@ -1151,8 +1153,13 @@ export default function App() {
         onLanguageChange={(newLang) => setLang(newLang)}
         onFarmerAuthenticated={(farmerData) => {
           setFarmer(farmerData);
+          setUserRole('farmer');
           setIsAuthenticated(true);
           persistentRepo.saveActiveFarmer(farmerData);
+        }}
+        onRoleSwitch={(role) => {
+          setUserRole(role);
+          setIsAuthenticated(true);
         }}
       />
     );
@@ -1164,22 +1171,73 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top Banner with Active User Identity & Role Switcher */}
-      <div style={{ background: '#0f172a', color: '#ffffff', padding: '6px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />
-          <span style={{ fontWeight: 800, letterSpacing: '0.5px' }}>FARMSOL</span>
-          <span style={{ background: userRole === 'admin' ? '#273b64' : '#15803d', color: '#ffffff', padding: '2px 8px', borderRadius: 4, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-            {userRole} WORKSPACE
-          </span>
-          <span>Logged in as: <strong>{userRole === 'farmer' ? farmer.name : emailInput}</strong></span>
+      <div style={{ background: '#0f172a', color: '#ffffff', padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+          <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>FARMSOL UNIFIED PLATFORM</span>
+        </div>
+
+        {/* Dynamic Workspace / Role Switcher Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', padding: '3px 6px', borderRadius: 8, border: '1px solid #334155' }}>
+          <button
+            style={{
+              background: userRole === 'farmer' ? '#16a34a' : 'transparent',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '5px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onClick={() => setUserRole('farmer')}
+          >
+            🌾 Farmer Portal
+          </button>
+          <button
+            style={{
+              background: userRole === 'operator' ? '#0284c7' : 'transparent',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '5px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onClick={() => setUserRole('operator')}
+          >
+            ⚡ Mandi Operator Desk
+          </button>
+          <button
+            style={{
+              background: userRole === 'admin' ? '#7c3aed' : 'transparent',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '5px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onClick={() => setUserRole('admin')}
+          >
+            🛡️ DoCA Command Centre
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+            Logged in: <strong style={{ color: '#f8fafc' }}>{userRole === 'farmer' ? (farmer?.name || 'Farmer User') : userRole === 'operator' ? 'APMC Mandi Operator' : 'DoCA Senior Officer'}</strong>
+          </span>
           <button
-            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem' }}
+            style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
             onClick={handleSignOut}
           >
-            Switch Role / Sign Out
+            Sign Out
           </button>
         </div>
       </div>
@@ -3222,16 +3280,16 @@ export default function App() {
                       <button
                         className="btn-login-green"
                         style={{ padding: '10px 14px', fontSize: '0.82rem', width: '100%' }}
-                        onClick={() => window.open('http://localhost:3010', '_blank')}
+                        onClick={() => setUserRole('operator')}
                       >
-                        {t.launchOperatorWeb || 'Launch Operator Web Desk (Port 3010)'}
+                        ⚡ Switch to Operator Web Desk
                       </button>
                       <button
                         className="btn-login-admin"
                         style={{ padding: '10px 14px', fontSize: '0.82rem', width: '100%' }}
-                        onClick={() => window.open('http://localhost:3020', '_blank')}
+                        onClick={() => setUserRole('admin')}
                       >
-                        {t.launchAdminWeb || 'Launch Admin Governance Portal (Port 3020)'}
+                        🛡️ Switch to Admin Governance Portal
                       </button>
                     </div>
                   </div>
@@ -3242,6 +3300,12 @@ export default function App() {
         </div>
       </div>
       )}
+
+      {/* 2. OPERATOR ROLE WORKSPACE */}
+      {userRole === 'operator' && <OperatorPortalView />}
+
+      {/* 3. ADMIN ROLE WORKSPACE */}
+      {userRole === 'admin' && <AdminPortalView />}
 
 
 

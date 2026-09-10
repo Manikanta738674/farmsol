@@ -8,6 +8,7 @@ interface GatewayPageProps {
   lang: Language;
   onLanguageChange: (lang: Language) => void;
   onFarmerAuthenticated: (farmerData: any) => void;
+  onRoleSwitch?: (role: 'farmer' | 'operator' | 'admin') => void;
 }
 
 const getHost = () => {
@@ -30,7 +31,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || `${getBackendHost()}/api/v
 export const GatewayPage: React.FC<GatewayPageProps> = ({
   lang,
   onLanguageChange,
-  onFarmerAuthenticated
+  onFarmerAuthenticated,
+  onRoleSwitch
 }) => {
   const [selectedRole, setSelectedRole] = useState<'farmer' | 'operator' | 'admin'>('farmer');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -591,12 +593,24 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
         }
       }
 
-      setStatusMessage({ type: 'success', text: 'Authentication confirmed. Redirecting to APMC Operator Desk...' });
+      const opData = { id: 'OP-' + Date.now(), name: operatorName.trim() || 'Mandi Operator', email: operatorEmail.trim(), centreId: operatorCentre };
+      persistentRepo.saveOperator(opData);
+      setStatusMessage({ type: 'success', text: 'Authentication confirmed. Launching APMC Operator Desk...' });
       setTimeout(() => {
-        window.location.href = targetUrl;
+        if (onRoleSwitch) {
+          onRoleSwitch('operator');
+        } else {
+          window.location.href = targetUrl;
+        }
       }, 500);
     } catch (e) {
-      window.location.href = targetUrl;
+      const opData = { id: 'OP-' + Date.now(), name: operatorName.trim() || 'Mandi Operator', email: operatorEmail.trim(), centreId: operatorCentre };
+      persistentRepo.saveOperator(opData);
+      if (onRoleSwitch) {
+        onRoleSwitch('operator');
+      } else {
+        window.location.href = targetUrl;
+      }
     } finally {
       setLoading(false);
     }
@@ -656,12 +670,24 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
         }
       }
 
+      const admData = { id: 'ADM-' + Date.now(), name: adminName.trim() || 'DoCA Officer', email: adminEmail.trim() };
+      persistentRepo.saveAdmin(admData);
       setStatusMessage({ type: 'success', text: 'Admin identity confirmed. Launching Governance Portal...' });
       setTimeout(() => {
-        window.location.href = targetUrl;
+        if (onRoleSwitch) {
+          onRoleSwitch('admin');
+        } else {
+          window.location.href = targetUrl;
+        }
       }, 500);
     } catch (e) {
-      window.location.href = targetUrl;
+      const admData = { id: 'ADM-' + Date.now(), name: adminName.trim() || 'DoCA Officer', email: adminEmail.trim() };
+      persistentRepo.saveAdmin(admData);
+      if (onRoleSwitch) {
+        onRoleSwitch('admin');
+      } else {
+        window.location.href = targetUrl;
+      }
     } finally {
       setLoading(false);
     }
