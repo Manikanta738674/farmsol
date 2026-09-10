@@ -1,0 +1,18 @@
+{
+  "name": "FARMSOL - Smart Farmer Procurement App",
+  "short_name": "FARMSOL",
+  "description": "Smart Farmer Procurement Platform - AI Nearest Mandi, Multi-Language, and Live Gate Pass",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/farmsol_logo.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
