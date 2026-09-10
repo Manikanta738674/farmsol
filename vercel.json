@@ -1,9 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --legacy-peer-deps && npm --prefix frontend-farmer install --legacy-peer-deps",
   "buildCommand": "npm --prefix frontend-farmer run build",
   "outputDirectory": "frontend-farmer/dist",
-  "framework": "vite",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",
