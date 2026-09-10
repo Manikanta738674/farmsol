@@ -1174,7 +1174,7 @@ export default function App() {
       <div style={{ background: '#0f172a', color: '#ffffff', padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
-          <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>FARMSOL UNIFIED PLATFORM</span>
+          <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>FARMSOL DIGITAL PROCUREMENT PLATFORM</span>
         </div>
 
         {/* Dynamic Workspace / Role Switcher Tabs */}
