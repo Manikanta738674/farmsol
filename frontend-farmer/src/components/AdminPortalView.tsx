@@ -331,18 +331,7 @@ export function AdminPortalView() {
             </button>
           </div>
 
-          <div className="role-label">SELECT YOUR ROLE / RBAC PORTAL</div>
-          <div className="role-selector">
-            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3001`)}>
-              Farmer
-            </button>
-            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3010`)}>
-              Operator
-            </button>
-            <button className="role-btn active-admin">
-              Admin
-            </button>
-          </div>
+          <div className="role-label">DoCA NATIONAL GOVERNANCE COMMAND CENTRE</div>
 
           <div>
             <div style={{ marginBottom: 14 }}>

@@ -142,10 +142,10 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
       operatorNameLabel: 'Operator Full Name',
       operatorMobileLabel: 'Operator Phone Number',
       mandiCentreLabel: 'Assigned APMC Procurement Centre',
-      signInOperatorBtn: 'Sign In & Launch Operator Desk (:3010)',
-      registerOperatorBtn: 'Register Operator & Launch Desk (:3010)',
-      signInAdminBtn: 'Authenticate & Launch Admin Portal (:3020)',
-      registerAdminBtn: 'Register Administrator & Launch Desk (:3020)',
+      signInOperatorBtn: 'Sign In & Launch Operator Desk',
+      registerOperatorBtn: 'Register Operator & Launch Desk',
+      signInAdminBtn: 'Authenticate & Launch Admin Portal',
+      registerAdminBtn: 'Register Administrator & Launch Desk',
       securityNotice: '256-Bit SSL Encrypted Government Cloud Gateway with Twilio Real-Time Multi-Factor Authentication',
       changeNumber: 'Change Number',
       existingUserFound: 'Registered farmer found in system. You can sign in directly with Name, Phone & OTP without registering again.',
@@ -193,10 +193,10 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
       operatorNameLabel: 'ఆపరేటర్ పూర్తి పేరు',
       operatorMobileLabel: 'ఆపరేటర్ మొబైల్ నంబర్',
       mandiCentreLabel: 'కేటాయించిన APMC సేకరణ కేంద్రం',
-      signInOperatorBtn: 'లాగిన్ చేసి ఆపరేటర్ పోర్టల్ తెరవండి (:3010)',
-      registerOperatorBtn: 'నమోదు చేసి ఆపరేటర్ పోర్టల్ తెరవండి (:3010)',
-      signInAdminBtn: 'ధృవీకరించి అడ్మిన్ పోర్టల్ తెరవండి (:3020)',
-      registerAdminBtn: 'అడ్మిన్‌గా నమోదు చేసి పోర్టల్ తెరవండి (:3020)',
+      signInOperatorBtn: 'లాగిన్ చేసి ఆపరేటర్ పోర్టల్ తెరవండి',
+      registerOperatorBtn: 'నమోదు చేసి ఆపరేటర్ పోర్టల్ తెరవండి',
+      signInAdminBtn: 'ధృవీకరించి అడ్మిన్ పోర్టల్ తెరవండి',
+      registerAdminBtn: 'అడ్మిన్‌గా నమోదు చేసి పోర్టల్ తెరవండి',
       securityNotice: '256-బిట్ SSL ఎన్‌క్రిప్ట్ చేయబడిన భారత ప్రభుత్వ డిజిటల్ భద్రతా వ్యవస్థ • Twilio SMS తో రక్షణ',
       changeNumber: 'నంబర్ మార్చండి',
       existingUserFound: 'సిస్టమ్‌లో మీ వివరాలు ఇప్పటికే ఉన్నాయి. పేరు, ఫోన్ మరియు OTP తో నేరుగా లాగిన్ అవ్వవచ్చు.',
@@ -244,10 +244,10 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
       operatorNameLabel: 'ऑपरेटर का पूरा नाम',
       operatorMobileLabel: 'ऑपरेटर मोबाइल नंबर',
       mandiCentreLabel: 'आवंटित एपीएमसी खरीद केंद्र',
-      signInOperatorBtn: 'लॉगिन करें और ऑपरेटर डेस्क खोलें (:3010)',
-      registerOperatorBtn: 'पंजीकरण करें और ऑपरेटर डेस्क खोलें (:3010)',
-      signInAdminBtn: 'सत्यापित कर व्यवस्थापक पोर्टल खोलें (:3020)',
-      registerAdminBtn: 'व्यवस्थापक पंजीकृत कर पोर्टल खोलें (:3020)',
+      signInOperatorBtn: 'लॉगिन करें और ऑपरेटर डेस्क खोलें',
+      registerOperatorBtn: 'पंजीकरण करें और ऑपरेटर डेस्क खोलें',
+      signInAdminBtn: 'सत्यापित कर व्यवस्थापक पोर्टल खोलें',
+      registerAdminBtn: 'व्यवस्थापक पंजीकृत कर पोर्टल खोलें',
       securityNotice: '256-बिट एसएसएल एन्क्रिप्टेड भारत सरकार क्लाउड गेटवे • Twilio SMS द्वारा सुरक्षित',
       changeNumber: 'नंबर बदलें',
       existingUserFound: 'आपकी जानकारी पहले से मौजूद है। नाम, फोन और ओटीपी से सीधे लॉगिन करें।',
@@ -295,10 +295,10 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
     operatorNameLabel: 'Operator Full Name',
     operatorMobileLabel: 'Operator Mobile Number',
     mandiCentreLabel: 'Assigned APMC Procurement Centre',
-    signInOperatorBtn: 'Sign In & Launch Operator Desk (:3010)',
-    registerOperatorBtn: 'Register Operator & Launch Desk (:3010)',
-    signInAdminBtn: 'Authenticate & Launch Admin Portal (:3020)',
-    registerAdminBtn: 'Register Administrator & Launch Desk (:3020)',
+    signInOperatorBtn: 'Sign In & Launch Operator Desk',
+    registerOperatorBtn: 'Register Operator & Launch Desk',
+    signInAdminBtn: 'Authenticate & Launch Admin Portal',
+    registerAdminBtn: 'Register Administrator & Launch Desk',
     securityNotice: '256-Bit SSL Encrypted Government Cloud Gateway',
     changeNumber: 'Change Number',
     existingUserFound: 'Registered user found. You can sign in directly without registering again.',
@@ -937,7 +937,7 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
                   color: selectedRole === 'operator' ? '#ffffff' : '#64748b',
                   letterSpacing: '0.5px'
                 }}>
-                  PORTAL 02 • OPERATOR DESK (:3010)
+                  PORTAL 02 • OPERATOR DESK
                 </span>
                 {selectedRole === 'operator' && (
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0284c7' }}>ACTIVE SELECTION</span>
@@ -974,7 +974,7 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
                   color: selectedRole === 'admin' ? '#ffffff' : '#64748b',
                   letterSpacing: '0.5px'
                 }}>
-                  PORTAL 03 • ADMIN (:3020)
+                  PORTAL 03 • ADMIN COMMAND CENTRE
                 </span>
                 {selectedRole === 'admin' && (
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#334155' }}>ACTIVE SELECTION</span>
@@ -1637,7 +1637,7 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
                 marginBottom: 20
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1d4ed8', marginBottom: 2 }}>
-                  [APMC OPERATOR DESK REDIRECTION: PORT 3010]
+                  [APMC MANDI OPERATOR DESK WORKSPACE]
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#1e40af' }}>
                   Authenticated operators manage Gate Entry, Assaying, Weighbridge Scales and DBT Clearance.
@@ -1917,7 +1917,7 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
                 marginBottom: 20
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 900, color: '#0f172a', marginBottom: 2 }}>
-                  [256-BIT ENCRYPTED GOVERNANCE GATEWAY: PORT 3020]
+                  [256-BIT ENCRYPTED GOVERNANCE GATEWAY]
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#475569' }}>
                   Restricted access for Ministry of Consumer Affairs (DoCA) Administrators & APMC Commissioners.

@@ -607,18 +607,7 @@ export function OperatorPortalView() {
             </button>
           </div>
 
-          <div className="role-label">SELECT YOUR ROLE / RBAC PORTAL</div>
-          <div className="role-selector">
-            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3001`)}>
-              Farmer
-            </button>
-            <button className="role-btn active-operator">
-              Operator
-            </button>
-            <button className="role-btn" onClick={() => (window.location.href = `http://${window.location.hostname}:3020`)}>
-              Admin
-            </button>
-          </div>
+          <div className="role-label">APMC MANDI LOGISTICS DESK</div>
 
           <div>
             <div style={{ marginBottom: 14 }}>
