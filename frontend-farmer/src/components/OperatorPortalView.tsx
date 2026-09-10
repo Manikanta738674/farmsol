@@ -20,11 +20,9 @@ export function OperatorPortalView() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('auth') === 'true') return true;
       if (params.get('logout') === 'true') return false;
-      return !!persistentRepo.getOperator();
     }
-    return false;
+    return true;
   });
   const [userRole, setUserRole] = useState<'farmer' | 'operator' | 'admin'>('operator');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');

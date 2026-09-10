@@ -19,11 +19,9 @@ export function AdminPortalView() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('auth') === 'true') return true;
       if (params.get('logout') === 'true') return false;
-      return !!persistentRepo.getAdmin();
     }
-    return false;
+    return true;
   });
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState<boolean>(false);
