@@ -59,6 +59,33 @@ During deployment, URLs automatically resolve to secure HTTPS domain names via e
 
 ---
 
+## ☁️ Vercel One-Click Deployment & Mobile PWA Setup (Expo Go Experience)
+
+FARMSOL is pre-configured with a Progressive Web App (PWA) manifest and Vercel build settings so that it can be deployed on Vercel and installed directly onto any smartphone (Android or iOS) like a native app.
+
+### 1. Push to GitHub
+Create an empty repository named `farmsol` on your GitHub account (`https://github.com/new`), then run:
+```bash
+git remote add origin https://github.com/Manikanta738674/farmsol.git
+git branch -M main
+git push -u origin main
+```
+
+### 2. Deploy on Vercel
+1. Go to [https://vercel.com/new](https://vercel.com/new) and log in with your GitHub account.
+2. Select and import the **`farmsol`** repository.
+3. Keep default settings (the included `vercel.json` automatically manages the build and outputs `frontend-farmer/dist`).
+4. Click **Deploy**. Vercel will generate a secure HTTPS production URL (e.g. `https://farmsol-app.vercel.app`).
+
+### 3. Use as an App on Mobile (Like Expo Go / Native App)
+1. Open the Vercel HTTPS URL in your mobile browser (**Chrome** on Android, **Safari** on iPhone).
+2. **Install as App**:
+   - **Android (Chrome)**: Tap the three dots menu `⋮` $\rightarrow$ **"Install app"** or **"Add to Home screen"**.
+   - **iPhone (Safari)**: Tap the Share icon $\rightarrow$ **"Add to Home Screen"**.
+3. Tap the **FARMSOL** app icon on your phone's home screen. The app opens in **standalone full-screen mode** without browser bars, featuring live GPS nearest mandi detection, multi-language switching (Telugu/Hindi/English), dynamic QR passes, and real-time farmer workflows!
+
+---
+
 ## 🚀 Step-by-Step Deployment Guide
 
 ### 1. Backend API & WebSockets (`api.smartprocure.gov.in`)
