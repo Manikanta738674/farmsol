@@ -20,7 +20,9 @@
     "dev:operator": "npm --prefix frontend-operator run dev",
     "dev:admin": "npm --prefix frontend-admin run dev",
     "seed": "npm --prefix backend run seed",
-    "build": "npm --prefix shared run build && npm --prefix backend run build && npm --prefix frontend-farmer run build && npm --prefix frontend-operator run build && npm --prefix frontend-admin run build"
+    "build:farmer": "npm --prefix frontend-farmer run build",
+    "build": "npm --prefix frontend-farmer run build",
+    "build:all": "npm --prefix shared run build && npm --prefix backend run build && npm --prefix frontend-farmer run build && npm --prefix frontend-operator run build && npm --prefix frontend-admin run build"
   },
   "keywords": [
     "agriculture",
