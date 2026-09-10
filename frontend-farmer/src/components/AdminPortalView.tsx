@@ -426,12 +426,15 @@ export function AdminPortalView({ lang = 'en', t: propT, onRoleSwitch }: AdminPo
       {/* MAIN CONTENT */}
       <main className="admin-main-wrapper">
         {/* TOPBAR */}
-        <header className="admin-topbar">
-          <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>Ministry of Consumer Affairs, Food & Public Distribution (DoCA)</span>
+        <header className="admin-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 64, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: '#a5b4fc', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{t.adminHeaderTitle || 'DoCA NATIONAL COMMAND CENTRE'}</div>
+            <div style={{ fontSize: '0.72rem', color: '#c4b5fd', marginTop: 2 }}>{t.adminHeaderSub || 'Real-Time Price Oversight, Capacity & DBT Surveillance'}</div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', fontWeight: 700 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>SA</div>
-              System Administrator
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(167, 139, 250, 0.2)', padding: '5px 12px', borderRadius: 9999, border: '1px solid rgba(167, 139, 250, 0.3)' }}>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, #a78bfa, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>SA</div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e2e8f0' }}>{t.doxaOfficerUser || 'DoCA Senior Officer'}</span>
             </div>
           </div>
         </header>
@@ -441,28 +444,31 @@ export function AdminPortalView({ lang = 'en', t: propT, onRoleSwitch }: AdminPo
           {/* TAB 1: SYSTEM OVERVIEW (DASHBOARD)                        */}
           {/* ========================================================= */}
           {activeTab === 'dashboard' && (
-            <div>
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>National System Overview</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Real-time monitoring across all APMC Mandis, MSP Disbursements, and Congestion Indexes.
+            <div style={{ animation: 'fadeSlideIn 0.3s ease-out' }}>
+              <div style={{ marginBottom: 24, padding: '20px 24px', background: 'linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%)', borderRadius: 16, border: '1px solid rgba(226, 232, 240, 0.8)' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.6rem' }}>🏛️</span>
+                  {t.adminDashboardTitle || 'National System Overview'}
+                </h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  {t.adminDashboardSub || 'Real-time monitoring across all APMC Mandis, MSP Disbursements, and Congestion Indexes.'}
                 </p>
               </div>
 
               {/* 5 KPI Cards */}
               <div className="admin-kpi-row">
-                <div className="admin-kpi-card"><span className="admin-kpi-title">Total Registered Farmers</span><span className="admin-kpi-value">14,250</span></div>
-                <div className="admin-kpi-card"><span className="admin-kpi-title">Active APMC Centres</span><span className="admin-kpi-value">{centresList.length}</span></div>
-                <div className="admin-kpi-card"><span className="admin-kpi-title">Certified Operators</span><span className="admin-kpi-value">{operatorsList.length}</span></div>
-                <div className="admin-kpi-card"><span className="admin-kpi-title">Total MT Procured</span><span className="admin-kpi-value">8,420 MT</span></div>
-                <div className="admin-kpi-card"><span className="admin-kpi-title">DBT Disbursed</span><span className="admin-kpi-value">₹19.4 Cr</span></div>
+                <div className="admin-kpi-card"><span className="admin-kpi-title">👨‍🌾 {t.adminKpiFarmers || 'Total Farmers'}</span><span className="admin-kpi-value">14,250</span></div>
+                <div className="admin-kpi-card"><span className="admin-kpi-title">🏪 {t.adminKpiCentres || 'APMC Centres'}</span><span className="admin-kpi-value">{centresList.length}</span></div>
+                <div className="admin-kpi-card"><span className="admin-kpi-title">👷 {t.adminKpiOperators || 'Certified Operators'}</span><span className="admin-kpi-value">{operatorsList.length}</span></div>
+                <div className="admin-kpi-card"><span className="admin-kpi-title">⚖️ {t.adminKpiProcured || 'Total MT Procured'}</span><span className="admin-kpi-value">8,420 MT</span></div>
+                <div className="admin-kpi-card"><span className="admin-kpi-title">💰 {t.adminKpiDbt || 'DBT Disbursed'}</span><span className="admin-kpi-value">₹19.4 Cr</span></div>
               </div>
 
               {/* Charts Grid */}
               <div className="admin-charts-grid">
                 {/* Bar Chart */}
                 <div className="chart-box">
-                  <div className="chart-title">Procurement & Capacity by Centre (Current Week)</div>
+                  <div className="chart-title">{t.adminChartProcurement || 'Procurement & Capacity by Centre (Current Week)'}</div>
                   <div style={{ height: 180, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', borderBottom: '1px solid var(--border)' }}>
                     {[
                       { centre: 'AMC Guntur', h1: 140, h2: 110 },
@@ -472,96 +478,90 @@ export function AdminPortalView({ lang = 'en', t: propT, onRoleSwitch }: AdminPo
                     ].map((b, i) => (
                       <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 150 }}>
-                          <div style={{ width: 18, height: b.h1, background: '#0284c7', borderRadius: '3px 3px 0 0' }} title="Capacity Quota"></div>
-                          <div style={{ width: 18, height: b.h2, background: '#22c55e', borderRadius: '3px 3px 0 0' }} title="Procured Quantity"></div>
+                          <div style={{ width: 18, height: b.h1, background: 'linear-gradient(180deg, #0284c7, #0369a1)', borderRadius: '3px 3px 0 0', transition: 'height 0.5s' }} title="Capacity Quota"></div>
+                          <div style={{ width: 18, height: b.h2, background: 'linear-gradient(180deg, #22c55e, #16a34a)', borderRadius: '3px 3px 0 0', transition: 'height 0.5s' }} title="Procured Quantity"></div>
                         </div>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{b.centre}</span>
                       </div>
                     ))}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 12, fontSize: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#0284c7', borderRadius: 2 }}></div> Daily Quota</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#22c55e', borderRadius: 2 }}></div> Actual Procured</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#0284c7', borderRadius: 2 }}></div> {t.adminLegendQuota || 'Daily Quota'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#22c55e', borderRadius: 2 }}></div> {t.adminLegendProcured || 'Actual Procured'}</div>
                   </div>
                 </div>
 
                 {/* Donut Chart */}
                 <div className="chart-box">
-                  <div className="chart-title">National Commodity Procurement Share</div>
+                  <div className="chart-title">{t.adminChartCommodity || 'National Commodity Procurement Share'}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160 }}>
                     <div style={{ width: 130, height: 130, borderRadius: '50%', background: 'conic-gradient(#22c55e 0% 45%, #3b82f6 45% 65%, #f59e0b 65% 85%, #8b5cf6 85% 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <div style={{ width: 68, height: 68, background: '#ffffff', borderRadius: '50%' }}></div>
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: '0.75rem', marginTop: 10 }}>
-                    <div><span style={{ color: '#22c55e' }}>●</span> Paddy (45%)</div>
-                    <div><span style={{ color: '#3b82f6' }}>●</span> Cotton (20%)</div>
-                    <div><span style={{ color: '#f59e0b' }}>●</span> Wheat (20%)</div>
-                    <div><span style={{ color: '#8b5cf6' }}>●</span> Coarse Grains (15%)</div>
+                    <div><span style={{ color: '#22c55e' }}>●</span> {t.commodityPaddy || 'Paddy'} (45%)</div>
+                    <div><span style={{ color: '#3b82f6' }}>●</span> {t.commodityCotton || 'Cotton'} (20%)</div>
+                    <div><span style={{ color: '#f59e0b' }}>●</span> {t.commodityWheat || 'Wheat'} (20%)</div>
+                    <div><span style={{ color: '#8b5cf6' }}>●</span> {t.commodityCoarse || 'Coarse Grains'} (15%)</div>
                   </div>
                 </div>
               </div>
 
               {/* Operators Table Snapshot */}
-              <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginTop: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div className="data-table-wrapper" style={{ marginTop: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Mandi Operator Credentials</h3>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Approve and manage operator access across Mandis.</p>
+                    <h3 style={{ fontSize: '1.0rem', fontWeight: 800 }}>{t.adminOpTableTitle || 'Mandi Operator Credentials'}</h3>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{t.adminOpTableSub || 'Approve and manage operator access across Mandis.'}</p>
                   </div>
-                  <button className="btn-call-next" style={{ background: '#273b64' }} onClick={() => setActiveTab('operators')}>
-                    Manage All Operators
+                  <button className="btn-call-next" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }} onClick={() => setActiveTab('operators')}>
+                    {t.adminManageAllOp || 'Manage All Operators'} →
                   </button>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '10px 12px' }}>OPERATOR ID</th>
-                      <th style={{ padding: '10px 12px' }}>NAME & EMAIL</th>
-                      <th style={{ padding: '10px 12px' }}>ASSIGNED APMC MANDI</th>
-                      <th style={{ padding: '10px 12px' }}>STATUS</th>
-                      <th style={{ padding: '10px 12px' }}>ACTIONS</th>
+                    <tr style={{ borderBottom: '2px solid #f1f5f9', textAlign: 'left', color: '#475569', fontSize: '0.70rem', textTransform: 'uppercase', letterSpacing: '0.8px', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
+                      <th style={{ padding: '10px 16px' }}>OPERATOR ID</th>
+                      <th style={{ padding: '10px 16px' }}>NAME & EMAIL</th>
+                      <th style={{ padding: '10px 16px' }}>ASSIGNED APMC MANDI</th>
+                      <th style={{ padding: '10px 16px' }}>STATUS</th>
+                      <th style={{ padding: '10px 16px' }}>ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {operatorsList.slice(0, 3).map((op, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px', fontWeight: 800 }}>{op.id}</td>
-                        <td style={{ padding: '12px' }}>
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                        <td style={{ padding: '12px 16px', fontWeight: 800, color: '#4f46e5' }}>{op.id}</td>
+                        <td style={{ padding: '12px 16px' }}>
                           <div style={{ fontWeight: 700 }}>{op.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{op.email}</div>
                         </td>
-                        <td style={{ padding: '12px' }}>{op.centre}</td>
-                        <td style={{ padding: '12px' }}>
+                        <td style={{ padding: '12px 16px' }}>{op.centre}</td>
+                        <td style={{ padding: '12px 16px' }}>
                           <span
-                            style={{
-                              background: op.status === 'Approved' ? '#dcfce7' : '#fef3c7',
-                              color: op.status === 'Approved' ? '#15803d' : '#b45309',
-                              padding: '3px 10px',
-                              borderRadius: 9999,
-                              fontWeight: 700,
-                              fontSize: '0.75rem'
-                            }}
+                            className={op.status === 'Approved' ? 'status-pill-completed' : 'status-pill-pending'}
                           >
-                            {op.status}
+                            {op.status === 'Approved' ? '✓ ' : '⏳ '}{op.status}
                           </span>
                         </td>
-                        <td style={{ padding: '12px' }}>
+                        <td style={{ padding: '12px 16px' }}>
                           <button
                             style={{
-                              background: op.status === 'Approved' ? '#ffffff' : '#15803d',
+                              background: op.status === 'Approved' ? '#fff' : 'linear-gradient(135deg, #15803d, #16a34a)',
                               border: op.status === 'Approved' ? '1px solid #fecaca' : 'none',
                               color: op.status === 'Approved' ? '#ef4444' : '#ffffff',
                               padding: '5px 12px',
-                              borderRadius: 6,
+                              borderRadius: 8,
                               fontSize: '0.75rem',
                               fontWeight: 700,
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              transition: 'all 0.18s'
                             }}
                             onClick={() => handleToggleOperatorStatus(op.id)}
                           >
-                            {op.status === 'Approved' ? 'Revoke' : 'Approve'}
+                            {op.status === 'Approved' ? '✕ Revoke' : '✓ Approve'}
                           </button>
                         </td>
                       </tr>
