@@ -1,5 +1,5 @@
 {
-  "name": "@smartfarmer/frontend-farmer",
+  "name": "frontend-farmer",
   "private": true,
   "version": "1.0.0",
   "main": "index.js",
