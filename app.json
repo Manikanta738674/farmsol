@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "FARMSOL Kisan Mobile App",
+    "slug": "farmsol-farmer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "gov.doca.smartprocure.farmer"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#15803d"
+      },
+      "package": "gov.doca.smartprocure.farmer"
+    }
+  }
+}
