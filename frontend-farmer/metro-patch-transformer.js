@@ -1,8 +1,8 @@
 const expoTransformer = require('@expo/metro-config/build/babel-transformer');
 
 function stripAs(s) {
-  // 1. Strip `export default Identifier as ...;`
-  s = s.replace(/export\s+default\s+([a-zA-Z0-9_$]+)\s+as\s+[\s\S]*?;/g, 'export default $1;');
+  // 1. Strip `export default expr as ...;`
+  s = s.replace(/export\s+default\s+([^;\n]+?)\s+as\s+[\s\S]*?;/g, 'export default $1;');
 
   // 2. Protect import and export-from statements
   const imports = [];
@@ -19,8 +19,14 @@ function stripAs(s) {
   // 3. Strip `as component(...)` casts
   s = s.replace(/\s+as\s+component\([\s\S]*?\)/g, '');
 
-  // 4. Strip TypeScript type assertions
-  const re = /(?<=[)\w\]}])\s+as\s+(?!(?:from|well|a|part|such|soon|usual)\b)(\$[\w]+|[A-Z][\w]*(<[^>]+>)?|const|any|unknown|boolean|string|number|void|\{[\s\S]*?\}|typeof\s+[\s\S]*?)(?=[;,)\n])/g;
+  // 4. Strip union casts with object types (e.g. as {...} | Array<unknown>)
+  s = s.replace(/\s+as\s+\{[^}]*\}\s*\|\s*[A-Za-z0-9_$]+(<[^>]*>)?/g, '');
+
+  // 5. Strip single and optional type assertions (e.g. as ?boolean, as ?string, as $FlowFixMe)
+  s = s.replace(/\s+as\s+\??[A-Za-z0-9_$.]+(<[^>]*>)?(?=[,);\n}])/g, '');
+
+  // 6. Strip TypeScript type assertions
+  const re = /(?<=[)\w\]}])\s+as\s+(?!(?:from|well|a|part|such|soon|usual)\b)(\$[\w]+|[A-Z][\w]*(<[^>]+>)?|const|any|unknown|\??boolean|\??string|\??number|void|\{[\s\S]*?\}|typeof\s+[\s\S]*?)(?=[;,)\n}])/g;
   let prev;
   let iterations = 0;
   do {
@@ -67,6 +73,9 @@ module.exports.transform = function (props) {
 
     // 7. Fix TypeScript named tuple elements in Flow files [param: Type] -> [Type]
     src = src.replace(/\[\s*[a-zA-Z0-9_$]+\s*:\s*/g, '[');
+
+    // 8. Fix generic calls on createAnimatedComponent in Animated components
+    src = src.replace(/export\s+default\s+createAnimatedComponent<[\s\S]*?>\s*\(\s*([A-Za-z0-9_$]+)[\s\S]*?;/g, 'export default createAnimatedComponent($1);');
   }
   return expoTransformer.transform({ ...props, src });
 };
