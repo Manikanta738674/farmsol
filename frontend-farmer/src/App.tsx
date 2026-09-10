@@ -4,7 +4,7 @@ import { translations, Language } from './i18n/translations';
 import { QRCodeCanvas } from './components/QRCodeCanvas';
 import { FarmSolLogo } from './components/FarmSolLogo';
 import { io } from 'socket.io-client';
-import { COMPREHENSIVE_CROPS, CROP_CATEGORIES } from '../../shared/src/constants/crops';
+import { COMPREHENSIVE_CROPS, CROP_CATEGORIES } from './constants/crops';
 
 const getHost = () => {
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
