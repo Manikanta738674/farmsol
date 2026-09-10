@@ -463,10 +463,10 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [otpSent, setOtpSent] = useState<boolean>(false);
-  const [farmerMobile, setFarmerMobile] = useState<string>('9125421544');
-  const [emailInput, setEmailInput] = useState<string>('saikumar448470@gmail.com');
-  const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
-  const [otpValues, setOtpValues] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
+  const [farmerMobile, setFarmerMobile] = useState<string>('');
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
   const [recentProcurements, setRecentProcurements] = useState<any[]>(() => {
     const saved = persistentRepo.getProcurements();
     if (saved && saved.length > 0) return saved;
@@ -1174,7 +1174,7 @@ export default function App() {
       <div style={{ background: '#0f172a', color: '#ffffff', padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="/farmsol_logo.jpg" alt="FARMSOL" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
-          <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>FARMSOL DIGITAL PROCUREMENT PLATFORM</span>
+          <span style={{ fontWeight: 900, letterSpacing: '0.5px', color: '#38bdf8' }}>{t.workspaceTitle || 'FARMSOL DIGITAL PROCUREMENT PLATFORM'}</span>
         </div>
 
         {/* Dynamic Workspace / Role Switcher Tabs */}
@@ -1193,7 +1193,7 @@ export default function App() {
             }}
             onClick={() => setUserRole('farmer')}
           >
-            🌾 Farmer Portal
+            🌾 {t.farmerPortalTab || 'Farmer Portal'}
           </button>
           <button
             style={{
@@ -1209,7 +1209,7 @@ export default function App() {
             }}
             onClick={() => setUserRole('operator')}
           >
-            ⚡ Mandi Operator Desk
+            ⚡ {t.operatorDeskTab || 'Mandi Operator Desk'}
           </button>
           <button
             style={{
@@ -1225,19 +1225,41 @@ export default function App() {
             }}
             onClick={() => setUserRole('admin')}
           >
-            🛡️ DoCA Command Centre
+            🛡️ {t.adminPortalTab || 'DoCA Command Centre'}
           </button>
         </div>
 
+        {/* Top Header Multi-Lingual Switcher & Account Info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', background: '#1e293b', borderRadius: 6, padding: 2, border: '1px solid #334155' }}>
+            <button
+              onClick={() => setLang('te')}
+              style={{ background: lang === 'te' ? '#16a34a' : 'transparent', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              తెలుగు
+            </button>
+            <button
+              onClick={() => setLang('hi')}
+              style={{ background: lang === 'hi' ? '#16a34a' : 'transparent', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              हिंदी
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              style={{ background: lang === 'en' ? '#16a34a' : 'transparent', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              English
+            </button>
+          </div>
+
           <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
-            Logged in: <strong style={{ color: '#f8fafc' }}>{userRole === 'farmer' ? (farmer?.name || 'Farmer User') : userRole === 'operator' ? 'APMC Mandi Operator' : 'DoCA Senior Officer'}</strong>
+            {t.loggedInAs || 'Logged in'}: <strong style={{ color: '#f8fafc' }}>{userRole === 'farmer' ? (farmer?.name || 'Farmer User') : userRole === 'operator' ? (t.mandiOperatorUser || 'APMC Mandi Operator') : (t.doxaOfficerUser || 'DoCA Senior Officer')}</strong>
           </span>
           <button
             style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
             onClick={handleSignOut}
           >
-            Sign Out
+            {t.signOutBtn || 'Sign Out'}
           </button>
         </div>
       </div>
@@ -3302,10 +3324,10 @@ export default function App() {
       )}
 
       {/* 2. OPERATOR ROLE WORKSPACE */}
-      {userRole === 'operator' && <OperatorPortalView />}
+      {userRole === 'operator' && <OperatorPortalView lang={lang} t={t} onRoleSwitch={setUserRole} />}
 
       {/* 3. ADMIN ROLE WORKSPACE */}
-      {userRole === 'admin' && <AdminPortalView />}
+      {userRole === 'admin' && <AdminPortalView lang={lang} t={t} onRoleSwitch={setUserRole} />}
 
 
 

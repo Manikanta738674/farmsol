@@ -15,7 +15,16 @@ const getBackendHost = () => {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || `${getBackendHost()}/api/v1`;
 
-export function OperatorPortalView() {
+import { Language, translations } from '../i18n/translations';
+
+interface OperatorPortalViewProps {
+  lang?: Language;
+  t?: any;
+  onRoleSwitch?: (role: 'farmer' | 'operator' | 'admin') => void;
+}
+
+export function OperatorPortalView({ lang = 'en', t: propT, onRoleSwitch }: OperatorPortalViewProps = {}) {
+  const t = propT || translations[lang] || translations.en;
   // Auth & RBAC State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -33,14 +42,14 @@ export function OperatorPortalView() {
   const [emailInput, setEmailInput] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('email')) return params.get('email') || 'saikumar448470@gmail.com';
+      if (params.get('email')) return params.get('email') || '';
       const op = persistentRepo.getOperator();
       if (op && op.email) return op.email;
     }
-    return 'saikumar448470@gmail.com';
+    return '';
   });
-  const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
-  const [farmerMobile, setFarmerMobile] = useState<string>('9125421544');
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [farmerMobile, setFarmerMobile] = useState<string>('');
 
   // Operator-to-Centre Registry Dictionary (Multi-Mandi Assignment)
   const OPERATOR_REGISTRY: Record<string, { id: string; name: string; centreId: string; centreName: string; location: string; counters: number }> = {
@@ -664,30 +673,27 @@ export function OperatorPortalView() {
           />
           <div>
             <div className="op-brand-title">FARMSOL</div>
-            <div className="op-brand-subtitle">APMC PROCUREMENT DESK</div>
+            <div className="op-brand-subtitle">{t.opHeaderTitle || 'APMC PROCUREMENT DESK'}</div>
           </div>
         </div>
 
         <nav className="op-sidebar-nav">
-          <button className={`op-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={`op-nav-item ${activeTab === 'queue' ? 'active' : ''}`} onClick={() => setActiveTab('queue')}>Live Queue</button>
-          <button className={`op-nav-item ${activeTab === 'gate' ? 'active' : ''}`} onClick={() => setActiveTab('gate')}>Gate Entry</button>
-          <button className={`op-nav-item ${activeTab === 'procurement' ? 'active' : ''}`} onClick={() => setActiveTab('procurement')}>Procurement</button>
-          <button className={`op-nav-item ${activeTab === 'farmers' ? 'active' : ''}`} onClick={() => setActiveTab('farmers')}>Farmers Registry</button>
-          <button className={`op-nav-item ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>Payments & DBT</button>
-          <button className={`op-nav-item ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Procurement History</button>
-          <button className={`op-nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>Analytics</button>
-          <button className={`op-nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>Reports</button>
-          <button className={`op-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
+          <button className={`op-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>{t.opNavDashboard || 'Live Queue & Counter'}</button>
+          <button className={`op-nav-item ${activeTab === 'queue' ? 'active' : ''}`} onClick={() => setActiveTab('queue')}>{t.liveQueue || 'Live Queue'}</button>
+          <button className={`op-nav-item ${activeTab === 'gate' ? 'active' : ''}`} onClick={() => setActiveTab('gate')}>{t.gateEntry || 'Gate Entry'}</button>
+          <button className={`op-nav-item ${activeTab === 'procurement' ? 'active' : ''}`} onClick={() => setActiveTab('procurement')}>{t.opNavRecords || 'Procurement'}</button>
+          <button className={`op-nav-item ${activeTab === 'farmers' ? 'active' : ''}`} onClick={() => setActiveTab('farmers')}>{t.opNavFarmers || 'Farmers Registry'}</button>
+          <button className={`op-nav-item ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>{t.dbtStatus || 'Payments & DBT'}</button>
+          <button className={`op-nav-item ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>{t.procureHistory || 'Procurement History'}</button>
         </nav>
 
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
           <button className="op-nav-item" style={{ color: '#ef4444' }} onClick={() => {
             persistentRepo.saveOperator(null);
             setIsAuthenticated(false);
-            window.location.href = `http://${window.location.hostname}:3001?logout=true`;
+            if (onRoleSwitch) onRoleSwitch('farmer');
           }}>
-            Sign Out & Return to Portal
+            {t.signOutBtn || 'Sign Out'}
           </button>
         </div>
       </aside>

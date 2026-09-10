@@ -39,45 +39,45 @@ export const GatewayPage: React.FC<GatewayPageProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
-  // Farmer Form State
-  const [farmerMobile, setFarmerMobile] = useState<string>('9125421544');
-  const [farmerName, setFarmerName] = useState<string>('Prudhvi Pavan');
-  const [farmerAddress, setFarmerAddress] = useState<string>('D.No 4-21, Main Road, Kakinada Rural, East Godavari, AP - 533005');
-  const [farmerEmail, setFarmerEmail] = useState<string>('pavan.farmer@kisan.gov.in');
-  const [farmerPassword, setFarmerPassword] = useState<string>('Pavan@2026Secure!');
-  const [farmerConfirmPassword, setFarmerConfirmPassword] = useState<string>('Pavan@2026Secure!');
+  // Farmer Form State (Clean Input Fields - No Pre-filled Credentials)
+  const [farmerMobile, setFarmerMobile] = useState<string>('');
+  const [farmerName, setFarmerName] = useState<string>('');
+  const [farmerAddress, setFarmerAddress] = useState<string>('');
+  const [farmerEmail, setFarmerEmail] = useState<string>('');
+  const [farmerPassword, setFarmerPassword] = useState<string>('');
+  const [farmerConfirmPassword, setFarmerConfirmPassword] = useState<string>('');
   const [farmerShowPassword, setFarmerShowPassword] = useState<boolean>(false);
   const [farmerDistrict, setFarmerDistrict] = useState<string>('Kakinada, East Godavari');
   const [farmerState, setFarmerState] = useState<string>('Andhra Pradesh');
-  const [farmerLandArea, setFarmerLandArea] = useState<string>('4.5');
-  const [farmerCrops, setFarmerCrops] = useState<string>('Paddy (Grade A), Cotton');
-  const [farmerAadhaar, setFarmerAadhaar] = useState<string>('5421 9840 1204');
-  const [farmerBankName, setFarmerBankName] = useState<string>('State Bank of India');
-  const [farmerAccountNo, setFarmerAccountNo] = useState<string>('501004829104');
-  const [farmerIfsc, setFarmerIfsc] = useState<string>('SBIN0001234');
+  const [farmerLandArea, setFarmerLandArea] = useState<string>('');
+  const [farmerCrops, setFarmerCrops] = useState<string>('Paddy (Grade A)');
+  const [farmerAadhaar, setFarmerAadhaar] = useState<string>('');
+  const [farmerBankName, setFarmerBankName] = useState<string>('');
+  const [farmerAccountNo, setFarmerAccountNo] = useState<string>('');
+  const [farmerIfsc, setFarmerIfsc] = useState<string>('');
 
   // OTP State
   const [otpSent, setOtpSent] = useState<boolean>(false);
-  const [otpValues, setOtpValues] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
+  const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
   const [twilioDeliveryNotice, setTwilioDeliveryNotice] = useState<string | null>(null);
 
-  // Operator Form State
-  const [operatorEmail, setOperatorEmail] = useState<string>('saikumar448470@gmail.com');
-  const [operatorPassword, setOperatorPassword] = useState<string>('Pavan@2026Secure!');
-  const [operatorConfirmPassword, setOperatorConfirmPassword] = useState<string>('Pavan@2026Secure!');
-  const [operatorName, setOperatorName] = useState<string>('Sai Kumar');
-  const [operatorAddress, setOperatorAddress] = useState<string>('APMC Regional Office, Collectorate Road, Guntur, AP - 522004');
-  const [operatorMobile, setOperatorMobile] = useState<string>('9440188990');
+  // Operator Form State (Clean Input Fields)
+  const [operatorEmail, setOperatorEmail] = useState<string>('');
+  const [operatorPassword, setOperatorPassword] = useState<string>('');
+  const [operatorConfirmPassword, setOperatorConfirmPassword] = useState<string>('');
+  const [operatorName, setOperatorName] = useState<string>('');
+  const [operatorAddress, setOperatorAddress] = useState<string>('');
+  const [operatorMobile, setOperatorMobile] = useState<string>('');
   const [operatorCentre, setOperatorCentre] = useState<string>('CTR-402');
   const [operatorShowPassword, setOperatorShowPassword] = useState<boolean>(false);
 
-  // Admin Form State
-  const [adminEmail, setAdminEmail] = useState<string>('pardhupavan459@gmail.com');
-  const [adminPassword, setAdminPassword] = useState<string>('Pavan@2026Secure!');
-  const [adminConfirmPassword, setAdminConfirmPassword] = useState<string>('Pavan@2026Secure!');
-  const [adminName, setAdminName] = useState<string>('Pardha Saradhi Pavan');
-  const [adminAddress, setAdminAddress] = useState<string>('Room 412, Krishi Bhawan, Dr. Rajendra Prasad Road, New Delhi - 110001');
-  const [adminMobile, setAdminMobile] = useState<string>('9849012345');
+  // Admin Form State (Clean Input Fields)
+  const [adminEmail, setAdminEmail] = useState<string>('');
+  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState<string>('');
+  const [adminName, setAdminName] = useState<string>('');
+  const [adminAddress, setAdminAddress] = useState<string>('');
+  const [adminMobile, setAdminMobile] = useState<string>('');
   const [adminShowPassword, setAdminShowPassword] = useState<boolean>(false);
 
   // Enterprise Acknowledgment Pop-up Modal State

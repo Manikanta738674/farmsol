@@ -14,7 +14,16 @@ const getBackendHost = () => {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || `${getBackendHost()}/api/v1`;
 
-export function AdminPortalView() {
+import { Language, translations } from '../i18n/translations';
+
+interface AdminPortalViewProps {
+  lang?: Language;
+  t?: any;
+  onRoleSwitch?: (role: 'farmer' | 'operator' | 'admin') => void;
+}
+
+export function AdminPortalView({ lang = 'en', t: propT, onRoleSwitch }: AdminPortalViewProps = {}) {
+  const t = propT || translations[lang] || translations.en;
   // Auth & RBAC State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -30,9 +39,9 @@ export function AdminPortalView() {
   const [emailInput, setEmailInput] = useState<string>(() => {
     const ad = persistentRepo.getAdmin();
     if (ad && ad.email) return ad.email;
-    return 'pardhupavan459@gmail.com';
+    return '';
   });
-  const [passwordInput, setPasswordInput] = useState<string>('Pavan@2026Secure!');
+  const [passwordInput, setPasswordInput] = useState<string>('');
 
   // Admin Workspace Tabs & Search
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -392,26 +401,24 @@ export function AdminPortalView() {
           </div>
         </div>
 
-        <div className="admin-menu-label">CENTRAL GOVERNANCE MENU</div>
+        <div className="admin-menu-label">{t.adminHeaderTitle || 'DoCA NATIONAL COMMAND CENTRE'}</div>
 
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={`admin-nav-item ${activeTab === 'centres' ? 'active' : ''}`} onClick={() => setActiveTab('centres')}>APMC Centres</button>
-          <button className={`admin-nav-item ${activeTab === 'operators' ? 'active' : ''}`} onClick={() => setActiveTab('operators')}>Mandi Operators</button>
-          <button className={`admin-nav-item ${activeTab === 'farmers' ? 'active' : ''}`} onClick={() => setActiveTab('farmers')}>Farmers Registry</button>
-          <button className={`admin-nav-item ${activeTab === 'crops' ? 'active' : ''}`} onClick={() => setActiveTab('crops')}>Crops & MSP Pricing</button>
-          <button className={`admin-nav-item ${activeTab === 'slots' ? 'active' : ''}`} onClick={() => setActiveTab('slots')}>Slots & Capacity</button>
-          <button className={`admin-nav-item ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>Audit Logs</button>
-          <button className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>System Settings</button>
+          <button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>{t.adminNavDashboard || 'Command Overview'}</button>
+          <button className={`admin-nav-item ${activeTab === 'centres' ? 'active' : ''}`} onClick={() => setActiveTab('centres')}>{t.adminNavCentres || 'Mandi Registry'}</button>
+          <button className={`admin-nav-item ${activeTab === 'operators' ? 'active' : ''}`} onClick={() => setActiveTab('operators')}>{t.adminNavOperators || 'Operators Approval'}</button>
+          <button className={`admin-nav-item ${activeTab === 'farmers' ? 'active' : ''}`} onClick={() => setActiveTab('farmers')}>{t.adminNavFarmers || 'Farmer Directory'}</button>
+          <button className={`admin-nav-item ${activeTab === 'crops' ? 'active' : ''}`} onClick={() => setActiveTab('crops')}>{t.adminNavCrops || 'Crop MSP Rates'}</button>
+          <button className={`admin-nav-item ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>{t.adminNavAudit || 'Audit Logs & Ledger'}</button>
         </nav>
 
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border-subtle)' }}>
           <button className="admin-nav-item" style={{ color: '#ef4444' }} onClick={() => {
             persistentRepo.saveAdmin(null);
             setIsAuthenticated(false);
-            window.location.href = `http://${window.location.hostname}:3001?logout=true`;
+            if (onRoleSwitch) onRoleSwitch('farmer');
           }}>
-            Sign Out & Return to Portal
+            {t.signOutBtn || 'Sign Out'}
           </button>
         </div>
       </aside>
