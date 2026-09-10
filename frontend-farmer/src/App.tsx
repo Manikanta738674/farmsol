@@ -11,13 +11,21 @@ import { GatewayPage } from './components/GatewayPage';
 import { AcknowledgeModal } from './components/AcknowledgeModal';
 
 const getHost = () => {
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+  if (typeof window !== 'undefined') {
     return window.location.hostname;
   }
   return 'localhost';
 };
 
-const API_BASE = `http://${getHost()}:5000/api/v1`;
+const getBackendHost = () => {
+  if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
+  if (typeof window !== 'undefined' && (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' || localStorage.getItem('FARMSOL_USE_RENDER_API') === 'true')) {
+    return 'https://farmsol-backend.onrender.com';
+  }
+  return `http://${getHost()}:5000`;
+};
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${getBackendHost()}/api/v1`;
 
 interface ActiveBooking {
   bookingId: string;
@@ -821,7 +829,7 @@ export default function App() {
   useEffect(() => {
     let socket: any = null;
     try {
-      socket = io(`http://${getHost()}:5000`, {
+      socket = io(getBackendHost(), {
         transports: ['websocket', 'polling']
       });
 

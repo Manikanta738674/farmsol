@@ -65,7 +65,10 @@ class RealtimeSyncManager {
 
   private initSocket() {
     try {
-      this.socket = io('http://localhost:5000', {
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' 
+        ? 'https://farmsol-backend.onrender.com' 
+        : 'http://localhost:5000';
+      this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
